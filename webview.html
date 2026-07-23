@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data: blob:; media-src blob:;">
+<title>Flowpilot</title>
+<style>
+  *{ box-sizing:border-box; }
+  :root{
+    --brand-1:#ff9326; --brand-2:#ff2d8b;
+    --brand-grad:linear-gradient(135deg,#ff9326 0%,#ff2d8b 100%);
+    --accent:#ff3d8b; --accent-hover:#ff5aa0; --accent-press:#e62e7d;
+    --accent-soft:rgba(255,61,139,.15);
+    --beta:#12b8cb; --beta-2:#2d8bff; --beta-grad:linear-gradient(135deg,#12b8cb 0%,#2d8bff 100%);
+    --beta-soft:rgba(18,184,203,.16);
+    --rec:#c4314b; --rec-hover:#d6536a;
+    --radius:4px; --radius-lg:10px;
+    --text: var(--vscode-foreground);
+    --muted: var(--vscode-descriptionForeground);
+    --bg: var(--vscode-editor-background);
+    --layer: var(--vscode-editorWidget-background, rgba(127,127,127,.06));
+    --rail: var(--vscode-sideBar-background, rgba(127,127,127,.04));
+    --stroke: var(--vscode-widget-border, var(--vscode-panel-border, rgba(127,127,127,.25)));
+    --stroke-soft: var(--vscode-panel-border, rgba(127,127,127,.2));
+  }
+  html,body{ height:100%; }
+  body{
+    margin:0; color:var(--text); background:var(--bg);
+    font-family:"Segoe UI","Segoe UI Web (West European)",-apple-system,system-ui,var(--vscode-font-family),sans-serif;
+    font-size:13px; line-height:1.45;
+  }
+  .app{ display:flex; flex-direction:column; height:100vh; }
+
+  /* App bar */
+  .appbar{ position:relative; display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--stroke); background:var(--bg); flex:0 0 auto; }
+  .appbar::after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--brand-grad); opacity:.9; }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-icon{ width:30px; height:30px; border-radius:8px; display:grid; place-items:center; overflow:hidden; flex:0 0 auto; box-shadow:0 2px 8px rgba(255,45,139,.35); }
+  .brand-icon svg{ display:block; width:30px; height:30px; }
+  .brand-title{ font-size:14px; font-weight:700; letter-spacing:.2px; background:var(--brand-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .brand-sub{ font-size:11px; color:var(--muted); margin-top:-1px; }
+  .appbar-spacer{ flex:1 1 auto; }
+  .appbar-toast{ font-size:12px; font-weight:600; color:var(--muted); opacity:0; transition:opacity .2s; max-width:60vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .appbar-toast.show{ opacity:1; }
+  .lang-btn{ margin-left:10px; flex:0 0 auto; font:inherit; font-size:11px; font-weight:700; letter-spacing:.5px; padding:4px 10px; border-radius:999px; cursor:pointer; border:1px solid var(--stroke); background:transparent; color:var(--text); display:inline-flex; align-items:center; gap:5px; }
+  .lang-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .lang-btn svg{ width:13px; height:13px; }
+
+  /* Search box */
+  .searchbox{ position:relative; margin-bottom:12px; }
+  .searchbox input[type=text]{ padding-left:34px; }
+  .searchbox svg{ position:absolute; left:11px; top:50%; transform:translateY(-50%); width:14px; height:14px; opacity:.55; pointer-events:none; }
+
+  /* Inline skill editor */
+  .skill-edit{ display:flex; flex-direction:column; gap:8px; }
+  .skill-edit .field-label{ margin:0 0 2px; }
+  .skill-edit textarea{ min-height:54px; }
+
+  /* Skill hint (Automazioni) */
+  .skill-hint{ display:flex; align-items:center; gap:10px; margin-top:10px; padding:8px 12px; border-radius:var(--radius-lg); background:var(--accent-soft); border:1px solid var(--stroke); font-size:12.5px; }
+  .skill-hint .qs-ic{ color:var(--accent); }
+  .skill-hint b{ word-break:break-word; }
+
+  /* Checkbox row */
+  .check-row{ display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; user-select:none; }
+  .check-row input{ width:auto; margin:0; }
+
+  /* Built-in (read-only) skill card */
+  .skill-builtin{ border:1px dashed rgba(255,61,139,.5); background:linear-gradient(180deg, var(--accent-soft), transparent); }
+  .skill-builtin .name{ display:flex; align-items:center; gap:8px; }
+  .badge.builtin{ background:var(--accent); color:#fff; }
+  .skill-builtin details{ margin-top:10px; }
+  .skill-builtin summary{ cursor:pointer; font-size:12.5px; color:var(--accent); font-weight:600; user-select:none; }
+  .skill-builtin pre{ margin:10px 0 0; padding:12px; max-height:280px; overflow:auto; background:var(--vscode-textCodeBlock-background, rgba(127,127,127,.12)); border:1px solid var(--stroke); border-radius:var(--radius); font-family:var(--vscode-editor-font-family, monospace); font-size:11.5px; line-height:1.5; white-space:pre-wrap; word-break:break-word; }
+
+  /* Onboarding welcome card */
+  .onb-card{ width:min(440px,100%); background:var(--card); border:1px solid var(--stroke); border-radius:16px; padding:26px 26px 22px; box-shadow:0 18px 60px rgba(0,0,0,.4); text-align:center; animation:onbIn .25s ease; }
+  @keyframes onbIn{ from{ opacity:0; transform:translateY(10px) scale(.98); } to{ opacity:1; transform:none; } }
+  .onb-logo svg{ width:60px; height:60px; }
+  .onb-card h2{ margin:12px 0 6px; font-size:21px; background:var(--brand-grad); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+  .onb-sub{ margin:0 0 16px; color:var(--muted); font-size:13.5px; }
+  .onb-steps{ display:flex; flex-direction:column; gap:11px; text-align:left; margin-bottom:18px; }
+  .onb-step{ display:flex; align-items:center; gap:12px; }
+  .onb-step b{ display:block; font-size:13.5px; }
+  .onb-step small{ color:var(--muted); font-size:12px; }
+  .onb-ic{ flex:0 0 auto; width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; color:#fff; }
+  .onb-ic.rec{ background:var(--rec); } .onb-ic.ai{ background:linear-gradient(135deg,#ff9326,#ff2d8b); } .onb-ic.lib{ background:var(--accent); }
+  .onb-actions{ display:flex; gap:10px; }
+  .onb-actions .btn{ flex:1 1 auto; justify-content:center; }
+
+  /* Guided tour */
+  .tour[hidden]{ display:none; }
+  .tour-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.55); }
+  .tour-welcome{ position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:64; }
+  .nav.tour-lift{ position:relative; z-index:61; }
+  .tour-ring{ position:fixed; z-index:62; border:2px solid var(--accent); border-radius:8px; box-shadow:0 0 0 4px rgba(255,61,139,.25), 0 0 16px 2px rgba(255,61,139,.55); pointer-events:none; transition:all .22s cubic-bezier(.4,0,.2,1); }
+  .tour-pop{ position:fixed; z-index:64; width:300px; max-width:calc(100vw - 32px); background:var(--card); border:1px solid var(--stroke); border-radius:12px; padding:15px 16px; box-shadow:0 14px 44px rgba(0,0,0,.42); animation:onbIn .2s ease; }
+  .tour-pop.arrow-left::before{ content:''; position:absolute; left:-7px; top:24px; width:13px; height:13px; background:var(--card); border-left:1px solid var(--stroke); border-bottom:1px solid var(--stroke); transform:rotate(45deg); }
+  .tour-pop.arrow-top::before{ content:''; position:absolute; top:-7px; left:28px; width:13px; height:13px; background:var(--card); border-left:1px solid var(--stroke); border-top:1px solid var(--stroke); transform:rotate(45deg); }
+  .tour-head{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .tour-count{ font-size:11px; font-weight:700; color:var(--accent); letter-spacing:.5px; }
+  .tour-langbtn{ margin-left:auto; font:inherit; font-size:10.5px; font-weight:700; letter-spacing:.5px; padding:3px 8px; border-radius:999px; cursor:pointer; border:1px solid var(--stroke); background:transparent; color:var(--text); display:inline-flex; align-items:center; gap:4px; }
+  .tour-langbtn:hover{ border-color:var(--accent); color:var(--accent); }
+  .tour-langbtn svg{ width:11px; height:11px; }
+  .tour-pop h3{ margin:0 0 6px; font-size:15px; }
+  .tour-pop p{ margin:0 0 12px; color:var(--muted); font-size:13px; line-height:1.5; }
+  .tour-dont{ margin:0 0 12px; color:var(--muted); font-size:12px; }
+  .tour-actions{ display:flex; align-items:center; gap:8px; }
+  .tour-actions .grow{ flex:1 1 auto; }
+
+  /* Shell */
+  .shell{ display:grid; grid-template-columns:212px 1fr; flex:1 1 auto; min-height:0; }
+
+  /* Nav rail */
+  .nav{ background:var(--rail); border-right:1px solid var(--stroke); padding:8px; display:flex; flex-direction:column; gap:2px; overflow:auto; }
+  .nav-item{ display:flex; align-items:center; gap:10px; width:100%; padding:8px 10px; border:0; border-radius:6px; cursor:pointer; background:transparent; color:var(--text); font:inherit; text-align:left; position:relative; }
+  .nav-item:hover{ background:var(--vscode-list-hoverBackground, rgba(127,127,127,.12)); }
+  .nav-item.active{ background:var(--accent-soft); color:var(--text); }
+  .nav-item.active::before{ content:""; position:absolute; left:2px; top:8px; bottom:8px; width:3px; border-radius:3px; background:var(--brand-grad); }
+  .nav-item svg{ width:18px; height:18px; flex:0 0 auto; opacity:.9; }
+  .nav-item.active svg{ color:var(--accent); opacity:1; }
+  .nav-item .nav-label{ flex:1 1 auto; font-size:13px; }
+  /* Voce beta (Video) — colore distinto teal->blu */
+  .nav-item.nav-beta svg{ color:var(--beta); opacity:1; }
+  .nav-item.nav-beta.active{ background:var(--beta-soft); }
+  .nav-item.nav-beta.active::before{ background:var(--beta-grad); }
+  .nav-item.nav-beta.active svg{ color:var(--beta); }
+  .beta-badge{ font-size:9px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; padding:2px 6px; border-radius:999px; background:var(--beta-grad); color:#04222a; line-height:1; }
+  .nav-badge{ min-width:18px; height:18px; padding:0 5px; border-radius:999px; font-size:11px; font-weight:600; display:none; align-items:center; justify-content:center; background:var(--brand-grad); color:#fff; }
+  .nav-badge.show{ display:inline-flex; }
+  .nav-ping{ width:7px; height:7px; border-radius:50%; background:var(--accent); display:none; flex:0 0 auto; }
+  .nav-ping.show{ display:inline-block; }
+
+  /* Content */
+  .content{ overflow:auto; padding:20px 24px; min-width:0; }
+  .view{ display:none; max-width:920px; }
+  .view.active{ display:block; animation:fade .18s ease; }
+  @keyframes fade{ from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+
+  .page-head{ display:flex; align-items:flex-start; gap:12px; margin-bottom:16px; }
+  .page-head .ph-main{ flex:1 1 auto; min-width:0; }
+  .page-head h1{ margin:0; font-size:20px; font-weight:600; letter-spacing:.1px; }
+  .page-sub{ margin:4px 0 0; color:var(--muted); font-size:13px; }
+  .section-title{ font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:22px 0 10px; }
+
+  /* Cards */
+  .card{ background:var(--layer); border:1px solid var(--stroke); border-radius:var(--radius-lg); padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .card.info{ background:transparent; }
+  .card h3{ margin:0 0 8px; font-size:13px; font-weight:600; }
+  .card p{ margin:0; color:var(--muted); font-size:12.5px; line-height:1.5; }
+  .cards{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:6px; }
+  .stat{ margin:0; }
+  .stat-num{ font-size:28px; font-weight:700; line-height:1; background:var(--brand-grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .stat-state{ display:flex; align-items:center; gap:8px; font-size:15px; font-weight:600; }
+  .stat-label{ margin-top:8px; color:var(--muted); font-size:12px; }
+
+  .quick{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .tile{ position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:6px; text-align:left; padding:16px; border-radius:var(--radius-lg); border:1px solid var(--stroke); background:var(--layer); color:var(--text); cursor:pointer; font:inherit; transition:border-color .15s, box-shadow .15s, transform .15s; }
+  .tile:hover{ border-color:var(--accent); box-shadow:0 6px 18px rgba(255,45,139,.16); transform:translateY(-1px); }
+  .tile .tile-ic{ width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:var(--accent-soft); color:var(--accent); }
+  .tile .tile-ic.rec{ background:rgba(196,49,75,.16); color:var(--rec); }
+  .tile .tile-ic.ai{ background:rgba(255,45,139,.16); color:#ff5aa0; }
+  .tile .tile-ic.lib{ background:rgba(255,147,38,.18); color:#ff9326; }
+  .tile .tile-ic.sess{ background:rgba(136,84,208,.18); color:#c08cff; }
+  .tile .tile-ic svg{ width:18px; height:18px; }
+  .tile .tile-t{ font-size:13.5px; font-weight:600; }
+  .tile small{ color:var(--muted); font-size:12px; }
+
+  /* Fields */
+  .field-label{ font-size:12px; font-weight:600; color:var(--text); margin:0 0 6px; }
+  .field-label.mt{ margin-top:14px; }
+  input[type=text], input[type=url], input[type=number], textarea{
+    width:100%; box-sizing:border-box; font:inherit; font-size:13px;
+    background:var(--vscode-input-background); color:var(--vscode-input-foreground);
+    border:1px solid var(--vscode-input-border, var(--stroke)); border-radius:var(--radius); padding:8px 10px;
+  }
+  input:focus, textarea:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  textarea{ font-family:inherit; resize:vertical; line-height:1.5; min-height:64px; }
+  select{ width:100%; box-sizing:border-box; font:inherit; font-size:13px; background:var(--vscode-input-background, var(--vscode-dropdown-background)); color:var(--vscode-input-foreground, var(--vscode-dropdown-foreground)); border:1px solid var(--vscode-input-border, var(--stroke)); border-radius:var(--radius); padding:8px 10px; cursor:pointer; }
+  select:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+
+  /* Quick skill picker */
+  .quick-skill{ display:flex; align-items:center; gap:8px; margin:0 0 14px; padding:8px 10px; border:1px solid rgba(255,61,139,.35); border-radius:var(--radius); background:var(--accent-soft); }
+  .quick-skill .qs-ic{ flex:0 0 auto; font-size:14px; line-height:1; }
+  .quick-skill select{ flex:1 1 auto; background:var(--vscode-input-background); }
+
+  /* Buttons */
+  .btn{ display:inline-flex; align-items:center; gap:7px; font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--stroke); background:var(--vscode-button-secondaryBackground, var(--layer)); color:var(--vscode-button-secondaryForeground, var(--text)); }
+  .btn:hover{ background:var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground)); }
+  .btn.primary{ background:var(--brand-grad); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(255,45,139,.28); }
+  .btn.primary:hover{ filter:brightness(1.07); }
+  .btn.primary:active{ filter:brightness(.94); }
+  .btn.beta{ background:var(--beta-grad); color:#04222a; border-color:transparent; box-shadow:0 2px 8px rgba(18,184,203,.3); }
+  .btn.beta:hover{ filter:brightness(1.07); }
+  .btn.beta:active{ filter:brightness(.94); }
+  .btn.rec{ background:var(--rec); color:#fff; border-color:transparent; }
+  .btn.rec:hover{ background:var(--rec-hover); }
+  .btn.danger{ background:transparent; color:#ff9aa6; border-color:rgba(196,49,75,.5); }
+  .btn.danger:hover{ background:rgba(196,49,75,.14); }
+  .btn.subtle{ background:transparent; }
+  .btn.subtle:hover{ background:var(--vscode-list-hoverBackground, rgba(127,127,127,.12)); }
+  .btn.sm{ padding:4px 10px; font-size:12px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+
+  .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .row.actions-row{ margin-top:14px; justify-content:flex-end; }
+  .grow{ flex:1 1 auto; min-width:0; }
+
+  /* Item lists (sessions + library) */
+  .itemlist{ display:flex; flex-direction:column; gap:10px; }
+  .empty{ color:var(--muted); padding:24px; text-align:center; border:1px dashed var(--stroke); border-radius:var(--radius-lg); font-size:12.5px; }
+  .session{ background:var(--layer); border:1px solid var(--stroke); border-radius:var(--radius-lg); padding:14px; }
+  .session:hover{ border-color:var(--vscode-focusBorder, var(--accent)); }
+  .session .name{ font-weight:600; font-size:13.5px; word-break:break-word; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .session .meta{ color:var(--muted); font-size:12px; margin-top:3px; word-break:break-word; }
+  .session .actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+  .session .actions button{ font:inherit; font-size:12px; font-weight:600; padding:5px 11px; border-radius:var(--radius); cursor:pointer; border:1px solid var(--stroke); background:transparent; color:var(--text); }
+  .session .actions button:hover{ background:var(--vscode-list-hoverBackground, rgba(127,127,127,.12)); }
+  .session .actions button.primary{ background:var(--brand-grad); color:#fff; border-color:transparent; }
+  .session .actions button.primary:hover{ filter:brightness(1.07); }
+  .session .actions button.danger{ color:#ff9aa6; border-color:rgba(196,49,75,.5); }
+  .session .actions button.danger:hover{ background:rgba(196,49,75,.14); }
+  .replays{ margin-top:12px; padding-top:12px; border-top:1px solid var(--stroke-soft); display:flex; flex-direction:column; gap:6px; }
+  .replay{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:12px; }
+  .replay .grow{ flex:1 1 auto; min-width:0; }
+  .replay button{ padding:2px 8px; font-size:11px; }
+  .replay a{ color:var(--vscode-textLink-foreground); cursor:pointer; }
+  .replay a:hover{ text-decoration:underline; }
+  .badge{ font-size:11px; font-weight:600; padding:2px 7px; border-radius:999px; background:rgba(16,124,16,.18); color:#7ee787; }
+  .badge.fail{ background:rgba(196,49,75,.18); color:#ff9aa6; }
+  .badge.link{ background:rgba(0,120,212,.18); color:#7cc1ff; }
+  .badge.ai{ background:rgba(136,84,208,.2); color:#d6b4ff; }
+  .reports{ margin-top:10px; padding-top:12px; border-top:1px solid var(--stroke-soft); display:flex; flex-direction:column; gap:6px; }
+  .reports-h{ color:var(--vscode-descriptionForeground); font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+  .report-link{ display:flex; align-items:center; gap:8px; text-align:left; width:100%; background:transparent; border:1px solid var(--stroke-soft); border-radius:var(--radius); padding:6px 9px; cursor:pointer; color:var(--text); font:inherit; font-size:12.5px; }
+  .report-link:hover{ background:var(--vscode-list-hoverBackground, rgba(127,127,127,.12)); border-color:var(--stroke); }
+  .report-ic{ flex:0 0 auto; font-size:9.5px; font-weight:700; letter-spacing:.3px; padding:2px 5px; border-radius:4px; color:#fff; }
+  .report-ic.md{ background:#5a6470; }
+  .report-ic.docx{ background:#2b579a; }
+  .report-name{ flex:1 1 auto; min-width:0; word-break:break-all; }
+
+  /* Command bar (selezione) */
+  .compareBar{ display:none; align-items:center; gap:8px; padding:10px 12px; margin-bottom:12px; background:var(--accent-soft); border:1px solid rgba(255,61,139,.4); border-radius:var(--radius-lg); }
+  .compareBar .grow{ font-size:12.5px; color:var(--text); }
+
+  /* Video → automazione (beta) */
+  .beta-title{ display:inline-flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .beta-card{ border-color:rgba(18,184,203,.4); }
+  .dropzone{ border:1.5px dashed rgba(18,184,203,.5); border-radius:var(--radius-lg); padding:22px; text-align:center; cursor:pointer; background:var(--beta-soft); color:var(--muted); transition:background .15s, border-color .15s; }
+  .dropzone:hover, .dropzone.drag{ border-color:var(--beta); background:rgba(18,184,203,.22); color:var(--text); }
+  .dropzone svg{ width:30px; height:30px; color:var(--beta); margin-bottom:8px; }
+  .dropzone b{ color:var(--text); }
+  .dropzone small{ display:block; margin-top:4px; font-size:11.5px; }
+  .video-meta{ margin-top:10px; font-size:12px; color:var(--muted); word-break:break-word; }
+  .video-preview{ margin-top:10px; }
+  .video-preview video{ width:100%; max-height:320px; background:#000; border:1px solid var(--stroke); border-radius:var(--radius-lg); display:block; }
+  .field-hint{ margin-top:6px; font-size:11.5px; color:var(--muted); }
+  .video-off{ position:absolute; left:-99999px; top:0; width:320px; height:180px; opacity:0; pointer-events:none; }
+  .range-row{ display:flex; align-items:center; gap:10px; }
+  .range-row input[type=range]{ flex:1 1 auto; accent-color:var(--beta); }
+  .range-row .range-val{ min-width:26px; text-align:right; font-weight:600; color:var(--beta); }
+  .frame-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-top:10px; }
+  .frame-cell{ position:relative; border:1px solid var(--stroke); border-radius:var(--radius); overflow:hidden; background:#000; aspect-ratio:16/9; cursor:pointer; transition:border-color .12s, transform .12s; }
+  .frame-cell:hover{ border-color:var(--beta); transform:translateY(-1px); }
+  .frame-cell:focus-visible{ outline:2px solid var(--beta); outline-offset:1px; }
+  .frame-cell img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .frame-cell span{ position:absolute; left:4px; bottom:4px; font-size:10px; font-weight:700; padding:1px 5px; border-radius:999px; background:rgba(0,0,0,.6); color:#fff; }
+  .video-status{ font-size:12px; color:var(--muted); margin-top:8px; }
+
+  /* Visualizzatore fotogrammi (lightbox) */
+  .frame-viewer[hidden]{ display:none; }
+  .frame-viewer{ position:fixed; inset:0; z-index:70; display:flex; align-items:center; justify-content:center; padding:40px; }
+  .fv-backdrop{ position:absolute; inset:0; background:rgba(0,0,0,.8); }
+  .fv-stage{ position:relative; z-index:1; margin:0; max-width:100%; max-height:100%; display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .fv-stage img{ max-width:100%; max-height:78vh; border-radius:var(--radius-lg); box-shadow:0 18px 60px rgba(0,0,0,.5); background:#000; }
+  .fv-stage figcaption{ font-size:12.5px; font-weight:600; color:#fff; }
+  .fv-close{ position:absolute; top:14px; right:16px; z-index:2; width:36px; height:36px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.5); color:#fff; font-size:16px; cursor:pointer; }
+  .fv-close:hover{ background:rgba(0,0,0,.75); }
+  .fv-nav{ position:relative; z-index:2; flex:0 0 auto; width:46px; height:46px; margin:0 6px; border-radius:999px; border:1px solid rgba(255,255,255,.25); background:rgba(0,0,0,.5); color:#fff; font-size:26px; line-height:1; cursor:pointer; }
+  .fv-nav:hover{ background:var(--beta); color:#04222a; border-color:transparent; }
+  .fv-nav:disabled{ opacity:.3; cursor:default; }
+
+  /* Guida / Come funziona */
+  .help-body{ font-size:13px; line-height:1.6; color:var(--text); }
+  .help-body p{ margin:0 0 10px; }
+  .help-body p:last-child{ margin-bottom:0; }
+  .help-body ul{ margin:0; padding-left:18px; }
+  .help-body li{ margin:5px 0; }
+  .help-body code{ background:var(--beta-soft); padding:1px 5px; border-radius:5px; font-size:12px; }
+  .help-body strong{ font-weight:650; }
+
+  /* Log */
+  .log{ background:var(--vscode-terminal-background,#0a0c10); color:var(--vscode-terminal-foreground,#e6e8ee); border:1px solid var(--stroke); border-radius:var(--radius-lg); padding:12px; height:300px; min-height:160px; overflow:auto; font-family:var(--vscode-editor-font-family,Consolas),monospace; font-size:12px; white-space:pre-wrap; }
+  .log .err{ color:#ff8a7a; }
+
+  /* Dots */
+  .dot{ display:inline-block; width:9px; height:9px; border-radius:50%; background:#888; flex:0 0 auto; }
+  .dot.run{ background:var(--rec); animation:pulse 1.2s infinite; }
+  .dot.busy{ background:var(--accent); animation:pulse 1.2s infinite; }
+  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(127,127,127,.5);} 70%{box-shadow:0 0 0 7px rgba(127,127,127,0);} 100%{box-shadow:0 0 0 0 rgba(127,127,127,0);} }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-thumb{ background:var(--vscode-scrollbarSlider-background, rgba(127,127,127,.3)); border-radius:6px; }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--vscode-scrollbarSlider-hoverBackground, rgba(127,127,127,.5)); }
+
+  @media (max-width:760px){
+    .shell{ grid-template-columns:1fr; }
+    .nav{ flex-direction:row; overflow-x:auto; border-right:0; border-bottom:1px solid var(--stroke); }
+    .nav-item{ flex-direction:column; gap:4px; min-width:74px; padding:8px 6px; }
+    .nav-item .nav-label{ font-size:11px; }
+    .nav-item.active::before{ left:8px; right:8px; top:auto; bottom:2px; width:auto; height:3px; }
+    .cards, .quick{ grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="appbar">
+    <div class="brand">
+      <span class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 256 256" width="28" height="28">
+          <defs>
+            <linearGradient id="biBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b2b3a"/><stop offset="1" stop-color="#14141d"/></linearGradient>
+            <radialGradient id="biGlow" cx="0.56" cy="0.4" r="0.62"><stop offset="0" stop-color="#ff7a3d" stop-opacity="0.5"/><stop offset="0.55" stop-color="#ff3d8b" stop-opacity="0.18"/><stop offset="1" stop-color="#ff3d8b" stop-opacity="0"/></radialGradient>
+            <linearGradient id="biA" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd36a"/><stop offset="1" stop-color="#ff9326"/></linearGradient>
+            <linearGradient id="biB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffa24a"/><stop offset="1" stop-color="#ff4e63"/></linearGradient>
+            <linearGradient id="biC" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a5c"/><stop offset="1" stop-color="#ff2a93"/></linearGradient>
+          </defs>
+          <rect width="256" height="256" rx="56" fill="url(#biBg)"/>
+          <rect width="256" height="256" rx="56" fill="url(#biGlow)"/>
+          <g stroke="#14141d" stroke-opacity="0.55" stroke-width="4" stroke-linejoin="round">
+            <rect x="93" y="62" width="54" height="136" rx="27" fill="url(#biA)" transform="rotate(-16 120 198)"/>
+            <rect x="92" y="56" width="56" height="142" rx="28" fill="url(#biB)" transform="rotate(14 120 198)"/>
+            <rect x="93" y="68" width="54" height="130" rx="27" fill="url(#biC)" transform="rotate(44 120 198)"/>
+          </g>
+        </svg>
+      </span>
+      <div>
+        <div class="brand-title">Flowpilot</div>
+        <div class="brand-sub" data-i18n="tagline">Registra · Replay · Automazioni</div>
+      </div>
+    </div>
+    <span class="appbar-spacer"></span>
+    <span class="appbar-toast" id="toast" role="status" aria-live="polite"></span>
+    <button class="lang-btn" id="btnLang" type="button" data-i18n-title="langTitle" title="Cambia lingua">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2 2.2 3 4.8 3 7.5s-1 5.3-3 7.5c-2-2.2-3-4.8-3-7.5s1-5.3 3-7.5z"/></svg>
+      <span id="langLabel">EN</span>
+    </button>
+  </header>
+
+  <div class="shell">
+    <nav class="nav" id="nav" aria-label="Sezioni">
+      <button class="nav-item active" data-view="home" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9.34 2.48a1 1 0 0 1 1.32 0l6 5.25A1 1 0 0 1 17 8.48V16a1.5 1.5 0 0 1-1.5 1.5h-2.25a1 1 0 0 1-1-1V13a1.25 1.25 0 0 0-2.5 0v3.5a1 1 0 0 1-1 1H6.5A1.5 1.5 0 0 1 5 16V8.48a1 1 0 0 1 .34-.75z"/></svg>
+        <span class="nav-label" data-i18n="nav.home">Home</span>
+      </button>
+      <button class="nav-item" data-view="record" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="5.5"/></svg>
+        <span class="nav-label" data-i18n="nav.record">Registra</span>
+      </button>
+      <button class="nav-item" data-view="ai" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2l1.6 4.4L16 8l-4.4 1.6L10 14l-1.6-4.4L4 8l4.4-1.6z"/><path d="M15.4 12.4l.66 1.8 1.84.66-1.84.66-.66 1.84-.66-1.84-1.84-.66 1.84-.66z" opacity=".7"/></svg>
+        <span class="nav-label" data-i18n="nav.ai">Automazioni</span>
+      </button>
+      <button class="nav-item nav-beta" data-view="video" type="button">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="11" height="11" rx="2"/><path d="M13.5 8.5l4-2v7l-4-2z"/></svg>
+        <span class="nav-label" data-i18n="nav.video">Video</span><span class="beta-badge" data-i18n="badge.beta">beta</span>
+      </button>
+      <button class="nav-item" data-view="library" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H8a1.5 1.5 0 0 1 1.5 1.5V16A1.5 1.5 0 0 1 8 17.5H5.5A1.5 1.5 0 0 1 4 16zM11 6.5A1.5 1.5 0 0 1 12.5 5h2A1.5 1.5 0 0 1 16 6.5V16a1.5 1.5 0 0 1-1.5 1.5h-2A1.5 1.5 0 0 1 11 16z"/></svg>
+        <span class="nav-label" data-i18n="nav.library">Skills</span><span class="nav-badge" id="navLibCount">0</span>
+      </button>
+      <button class="nav-item" data-view="sessions" type="button">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg>
+        <span class="nav-label" data-i18n="nav.sessions">Sessioni</span><span class="nav-badge" id="navSessCount">0</span>
+      </button>
+      <button class="nav-item" data-view="settings" type="button">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 6.5A3.5 3.5 0 1 0 10 13.5 3.5 3.5 0 0 0 10 6.5zm0 2A1.5 1.5 0 1 1 10 11.5 1.5 1.5 0 0 1 10 8.5z"/><path d="M8.7 2.2a1 1 0 0 1 .98-.8h.64a1 1 0 0 1 .98.8l.2 1.02a6.4 6.4 0 0 1 1.27.74l.98-.36a1 1 0 0 1 1.22.45l.32.55a1 1 0 0 1-.24 1.28l-.8.66c.05.24.08.49.08.74s-.03.5-.08.74l.8.66a1 1 0 0 1 .24 1.28l-.32.55a1 1 0 0 1-1.22.45l-.98-.36a6.4 6.4 0 0 1-1.27.74l-.2 1.02a1 1 0 0 1-.98.8h-.64a1 1 0 0 1-.98-.8l-.2-1.02a6.4 6.4 0 0 1-1.27-.74l-.98.36a1 1 0 0 1-1.22-.45l-.32-.55a1 1 0 0 1 .24-1.28l.8-.66A4.9 4.9 0 0 1 4.3 10c0-.25.03-.5.08-.74l-.8-.66a1 1 0 0 1-.24-1.28l.32-.55a1 1 0 0 1 1.22-.45l.98.36a6.4 6.4 0 0 1 1.27-.74z" opacity=".55"/></svg>
+        <span class="nav-label" data-i18n="nav.settings">Impostazioni</span>
+      </button>
+      <button class="nav-item" data-view="help" type="button">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 7.8a2.2 2.2 0 1 1 3.2 2c-.8.5-1 .8-1 1.7"/><circle cx="10" cy="14.5" r=".4" fill="currentColor"/></svg>
+        <span class="nav-label" data-i18n="nav.help">Guida</span>
+      </button>
+    </nav>
+
+    <main class="content">
+      <!-- HOME -->
+      <section class="view active" data-view="home">
+        <div class="page-head"><div class="ph-main">
+          <h1 data-i18n="home.title">Panoramica</h1>
+          <p class="page-sub" data-i18n="home.sub">Registra flussi nel browser, lascia che l'AI navighi i siti e gestisci le tue Skills riutilizzabili.</p>
+        </div></div>
+        <div class="cards">
+          <div class="card stat"><div class="stat-num" id="homeSessCount">0</div><div class="stat-label" data-i18n="home.statSessions">Sessioni registrate</div></div>
+          <div class="card stat"><div class="stat-num" id="homeLibCount">0</div><div class="stat-label" data-i18n="home.statSkills">Skill salvate</div></div>
+          <div class="card stat"><div class="stat-state"><span class="dot" id="homeDot"></span><span id="homeStateText">Inattivo</span></div><div class="stat-label" data-i18n="home.statState">Stato corrente</div></div>
+        </div>
+        <h2 class="section-title" data-i18n="home.quick">Azioni rapide</h2>
+        <div class="quick">
+          <button class="tile" data-goto="record" type="button"><span class="tile-ic rec"><svg viewBox="0 0 20 20" fill="currentColor"><circle cx="10" cy="10" r="5.5"/></svg></span><span class="tile-t" data-i18n="tile.recordT">Nuova registrazione</span><small data-i18n="tile.recordS">Cattura click e digitazione in Edge o Chrome</small></button>
+          <button class="tile" data-goto="ai" type="button"><span class="tile-ic ai"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2l1.6 4.4L16 8l-4.4 1.6L10 14l-1.6-4.4L4 8l4.4-1.6z"/></svg></span><span class="tile-t" data-i18n="tile.aiT">Automazioni</span><small data-i18n="tile.aiS">Descrivi un obiettivo, lo esegue Copilot</small></button>
+          <button class="tile" data-goto="library" type="button"><span class="tile-ic lib"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H8a1.5 1.5 0 0 1 1.5 1.5V16A1.5 1.5 0 0 1 8 17.5H5.5A1.5 1.5 0 0 1 4 16zM11 6.5A1.5 1.5 0 0 1 12.5 5h2A1.5 1.5 0 0 1 16 6.5V16a1.5 1.5 0 0 1-1.5 1.5h-2A1.5 1.5 0 0 1 11 16z"/></svg></span><span class="tile-t" data-i18n="tile.libT">Skills</span><small data-i18n="tile.libS">Le tue automazioni salvate, pronte da rieseguire</small></button>
+          <button class="tile" data-goto="sessions" type="button"><span class="tile-ic sess"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg></span><span class="tile-t" data-i18n="tile.sessT">Vedi sessioni</span><small data-i18n="tile.sessS">Replay AI e report generati</small></button>
+        </div>
+      </section>
+
+      <!-- REGISTRA -->
+      <section class="view" data-view="record">
+        <div class="page-head"><div class="ph-main">
+          <h1 data-i18n="record.title">Registra</h1>
+          <p class="page-sub" data-i18n="record.sub">Cattura una sessione reale nel browser: click, digitazione, navigazione e scroll.</p>
+        </div></div>
+        <div class="card">
+          <div class="field-label" data-i18n="record.urlLabel">URL di partenza</div>
+          <input type="url" id="url" placeholder="https://example.com" value="https://en.wikipedia.org/wiki/Microsoft">
+          <div class="row actions-row">
+            <button class="btn rec" id="btnRecord" type="button" data-i18n="btn.record">● Registra</button>
+            <button class="btn danger" id="btnStop" type="button" disabled data-i18n="btn.stop">■ Stop</button>
+          </div>
+        </div>
+        <div class="card info">
+          <h3 data-i18n="record.howT">Come funziona</h3>
+          <p data-i18n-html="record.howP">Si apre il browser (Edge o Chrome) con un overlay: premi <b>Start</b> per iniziare a registrare e <b>Stop &amp; Salva</b> per terminare. La sessione viene salvata e potrai rieseguirla con l'AI dalla sezione <b>Sessioni</b>.</p>
+        </div>
+        <div class="card" id="lastRecCard" style="display:none">
+          <h3 data-i18n="record.lastT">Ultima registrazione</h3>
+          <div class="meta" id="lastRecName" style="margin:0 0 12px; color:var(--muted); word-break:break-word"></div>
+          <div class="row">
+            <button class="btn primary" id="btnReplayLast" type="button" data-i18n="btn.replayLast">🤖 Replay (AI)</button>
+            <button class="btn subtle" id="btnOpenLast" type="button" data-i18n="btn.openFolder">📂 Apri cartella</button>
+          </div>
+        </div>
+        <h2 class="section-title" data-i18n="record.logT">Log live</h2>
+        <div class="log" id="log"></div>
+      </section>
+
+      <!-- AUTOMAZIONI -->
+      <section class="view" data-view="ai">
+        <div class="page-head"><div class="ph-main">
+          <h1 data-i18n="ai.title">Automazioni</h1>
+          <p class="page-sub" data-i18n="ai.sub">Descrivi un obiettivo in linguaggio naturale: Copilot lo esegue sul sito con i tool Playwright MCP. Non serve registrare.</p>
+        </div></div>
+        <div class="card">
+          <div class="quick-skill" id="qsAiWrap" style="display:none">
+            <span class="qs-ic" aria-hidden="true">⚡</span>
+            <select id="qsAi" aria-label="Carica una Skill salvata">
+              <option value="" data-i18n="qs.load">Carica una Skill salvata…</option>
+            </select>
+          </div>
+          <div class="field-label" data-i18n="ai.urlLabel">URL</div>
+          <input type="url" id="aiUrl" placeholder="https://portale.example.com">
+          <div class="field-label mt" data-i18n="ai.goalLabel">Obiettivo per l'AI</div>
+          <textarea id="aiPrompt" rows="4" data-i18n-ph="ai.goalPh" placeholder="Es: accedi, vai in Fatture, apri l'ultima e dimmi l'importo"></textarea>
+          <div class="skill-hint" id="aiSkillHint" style="display:none">
+            <span class="qs-ic" aria-hidden="true">✦</span>
+            <span class="grow"><span data-i18n="ai.editingSkill">Stai modificando la Skill:</span> <b id="aiSkillName"></b></span>
+            <button class="btn primary sm" id="btnAiUpdate" type="button" data-i18n="btn.updateSkill">💾 Aggiorna Skill</button>
+          </div>
+          <div class="row actions-row">
+            <button class="btn subtle" id="btnAiSave" type="button" data-i18n="btn.saveSkill">💾 Salva come Skill</button>
+            <button class="btn primary" id="btnAiNavigate" type="button" data-i18n="btn.runAuto">✨ Avvia automazione</button>
+          </div>
+        </div>
+        <div class="card info">
+          <h3 data-i18n="ai.outT">Cosa produce</h3>
+          <p data-i18n="ai.outP">L'AI apre il sito, raggiunge l'obiettivo e scrive un report Markdown più un documento Word executive. Richiede Copilot Chat attivo con i tool MCP.</p>
+        </div>
+      </section>
+
+      <!-- VIDEO → AUTOMAZIONE (BETA) -->
+      <section class="view" data-view="video">
+        <div class="page-head"><div class="ph-main">
+          <h1 class="beta-title"><span data-i18n="video.title">Video → Automazione</span> <span class="beta-badge" data-i18n="badge.beta">beta</span></h1>
+          <p class="page-sub" data-i18n="video.sub">Carica un video (screen recording): l'AI analizza i fotogrammi, ricostruisce i passaggi e li riproduce sul sito con Playwright.</p>
+        </div></div>
+
+        <div class="card beta-card">
+          <div class="field-label" data-i18n="video.fileLabel">Video</div>
+          <div class="dropzone" id="videoDrop" tabindex="0" role="button" aria-label="Carica video">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V6m0 0l-4 4m4-4l4 4"/><path d="M5 18h14"/></svg>
+            <div><b data-i18n="video.dropTitle">Trascina qui un video o clicca per sceglierlo</b><small data-i18n="video.dropSub">MP4, WebM, MOV — l'estrazione dei fotogrammi avviene in locale</small></div>
+          </div>
+          <input type="file" id="videoFile" accept="video/*" hidden>
+          <div class="video-meta" id="videoMeta" hidden></div>
+          <div class="video-preview" id="videoPreview" hidden>
+            <video id="videoEl" controls playsinline preload="metadata"></video>
+          </div>
+
+          <div class="field-label mt" data-i18n="video.urlLabel">URL di partenza (consigliato)</div>
+          <input type="url" id="videoUrl" placeholder="https://portale.example.com">
+          <div class="field-label mt" data-i18n="video.hintLabel">Contesto / obiettivo (opzionale)</div>
+          <textarea id="videoHint" rows="2" data-i18n-ph="video.hintPh" placeholder="Es: è un login al portale fornitori, poi apro l'ultima fattura"></textarea>
+          <div class="field-label mt" data-i18n="video.framesLabel">Fotogrammi da estrarre</div>
+          <div class="range-row">
+            <input type="range" id="videoFrames" min="8" max="48" step="4" value="24">
+            <span class="range-val" id="videoFramesVal">24</span>
+          </div>
+          <div class="field-hint" data-i18n="video.framesHint">Vengono inviati tutti i fotogrammi: se superano 20 vengono raggruppati in immagini composte, così l'AI li vede tutti rispettando il limite del modello.</div>
+
+          <div class="row actions-row">
+            <button class="btn beta" id="btnVideoExtract" type="button" disabled data-i18n="video.extract">🎞️ Estrai fotogrammi</button>
+          </div>
+          <div class="video-status" id="videoStatus" hidden></div>
+        </div>
+
+        <div class="card" id="videoFramesCard" hidden>
+          <h3><span data-i18n="video.framesTitle">Fotogrammi estratti</span> (<span id="videoFrameCount">0</span>)</h3>
+          <p class="page-sub" data-i18n="video.framesSub">Clicca un fotogramma per ingrandirlo e scorrere gli altri.</p>
+          <div class="frame-grid" id="videoFrameGrid"></div>
+          <div class="row actions-row">
+            <button class="btn subtle" id="btnVideoReset" type="button" data-i18n="video.reset">Ricomincia</button>
+            <button class="btn beta" id="btnVideoAnalyze" type="button" data-i18n="video.analyze">✨ Analizza e riproduci con l'AI</button>
+          </div>
+        </div>
+
+        <div class="card info">
+          <h3 data-i18n="video.howT">Come funziona</h3>
+          <p data-i18n="video.howP">I fotogrammi vengono estratti localmente nel pannello: il video non lascia il tuo computer. Solo le immagini dei fotogrammi vengono salvate e passate a Copilot, che le analizza con la sua capacità visiva per ricostruire e rieseguire le azioni. Funziona meglio con registrazioni del browser. Funzione sperimentale (beta): rivedi sempre i passaggi proposti.</p>
+        </div>
+
+        <!-- canvas off-screen per l'estrazione dei fotogrammi -->
+        <canvas id="videoCanvas" class="video-off"></canvas>
+
+        <!-- visualizzatore fotogrammi -->
+        <div class="frame-viewer" id="frameViewer" hidden>
+          <div class="fv-backdrop" id="fvBackdrop"></div>
+          <button class="fv-close" id="fvClose" type="button" aria-label="Chiudi">✕</button>
+          <button class="fv-nav prev" id="fvPrev" type="button" aria-label="Precedente">‹</button>
+          <figure class="fv-stage">
+            <img id="fvImg" alt="">
+            <figcaption id="fvCaption"></figcaption>
+          </figure>
+          <button class="fv-nav next" id="fvNext" type="button" aria-label="Successivo">›</button>
+        </div>
+      </section>
+
+      <!-- SKILLS -->
+      <section class="view" data-view="library">
+        <div class="page-head"><div class="ph-main">
+          <h1 data-i18n="lib.title">Skills</h1>
+          <p class="page-sub" data-i18n="lib.sub">Le tue Skills: link e task riutilizzabili. Avviali con l'AI, modificali o usali per precompilare i campi.</p>
+        </div></div>
+        <div class="searchbox">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6"/><path d="M17 17l-3.5-3.5"/></svg>
+          <input type="text" id="librarySearch" data-i18n-ph="lib.searchPh" placeholder="Cerca tra le Skills…">
+        </div>
+        <div class="compareBar" id="libraryBar">
+          <span class="grow" id="librarySelInfo"></span>
+          <button class="btn primary sm" id="btnRunSelected" type="button" data-i18n="btn.runSelected">▶ Esegui selezionati</button>
+        </div>
+        <div class="itemlist" id="library"></div>
+      </section>
+
+      <!-- SESSIONI -->
+      <section class="view" data-view="sessions">
+        <div class="page-head">
+          <div class="ph-main">
+            <h1 data-i18n="sess.title">Sessioni</h1>
+            <p class="page-sub" data-i18n="sess.sub">Le registrazioni catturate. Rieseguile con l'AI e apri i report generati.</p>
+          </div>
+          <button class="btn danger" id="btnClear" type="button" data-i18n="btn.clearAll">🗑 Elimina tutto</button>
+        </div>
+        <div class="searchbox">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="6"/><path d="M17 17l-3.5-3.5"/></svg>
+          <input type="text" id="sessionSearch" data-i18n-ph="sess.searchPh" placeholder="Cerca tra le sessioni…">
+        </div>
+        <div class="compareBar" id="compareBar">
+          <span class="grow" id="compareInfo"></span>
+          <button class="btn primary sm" id="btnAskCopilot" type="button" data-i18n="btn.askCopilot">🤖 Chiedi a Copilot</button>
+          <button class="btn subtle sm" id="btnClearSel" type="button" data-i18n="btn.cancel">Annulla</button>
+        </div>
+        <div class="itemlist" id="sessions"></div>
+      </section>
+
+      <!-- IMPOSTAZIONI -->
+      <section class="view" data-view="settings">
+        <div class="page-head"><div class="ph-main">
+          <h1 data-i18n="set.title">Impostazioni</h1>
+          <p class="page-sub" data-i18n="set.sub">Personalizza l'avvio dell'app e la posizione in cui vengono salvati gli output.</p>
+        </div></div>
+        <div class="card">
+          <h3 data-i18n="set.langT">Lingua</h3>
+          <p style="margin:0 0 10px" data-i18n="set.langP">Lingua dell'interfaccia dell'app.</p>
+          <select id="setLanguage">
+            <option value="it">Italiano</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="card">
+          <h3 data-i18n="set.startT">Schermata iniziale</h3>
+          <p style="margin:0 0 10px" data-i18n="set.startP">Sezione mostrata all'apertura dell'app.</p>
+          <select id="setStartup">
+            <option value="home" data-i18n="nav.home">Home</option>
+            <option value="record" data-i18n="nav.record">Registra</option>
+            <option value="ai" data-i18n="nav.ai">Automazioni</option>
+            <option value="library" data-i18n="nav.library">Skills</option>
+            <option value="sessions" data-i18n="nav.sessions">Sessioni</option>
+          </select>
+        </div>
+        <div class="card">
+          <h3 data-i18n="set.onbT">Introduzione</h3>
+          <p style="margin:0 0 10px" data-i18n="set.onbP">La schermata di benvenuto mostrata all'avvio dell'app.</p>
+          <label class="check-row"><input type="checkbox" id="setOnboarding"><span data-i18n="set.onbCheck">Mostra l'introduzione all'avvio</span></label>
+          <div class="row actions-row">
+            <button class="btn subtle" id="btnShowOnboarding" type="button" data-i18n="btn.showOnboarding">👋 Rivedi l'introduzione</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="set.outT">Cartella di output</h3>
+          <p style="margin:0 0 10px" data-i18n="set.outP">Dove vengono salvati registrazioni, replay e report. Lascia vuoto per usare la posizione predefinita dell'estensione.</p>
+          <input type="text" id="setOutput" data-i18n-ph="set.outPh" placeholder="(predefinita)">
+          <div class="meta" id="setOutputEffective" style="margin-top:8px; color:var(--muted); word-break:break-word"></div>
+          <div class="row actions-row">
+            <button class="btn subtle" id="btnOutputReset" type="button" data-i18n="btn.resetDefault">Ripristina predefinita</button>
+            <button class="btn subtle" id="btnOutputBrowse" type="button" data-i18n="btn.browse">📂 Sfoglia…</button>
+            <button class="btn primary" id="btnOutputSave" type="button" data-i18n="btn.save">Salva</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- COME FUNZIONA / GUIDA -->
+      <section class="view" data-view="help">
+        <div class="page-head"><div class="ph-main">
+          <h1 data-i18n="help.title">Come funziona</h1>
+          <p class="page-sub" data-i18n="help.sub">Una guida semplice a Flowpilot: cosa fa, come lavora l'AI e quali strumenti usa.</p>
+        </div></div>
+        <div class="card">
+          <h3 data-i18n="help.whatT">Cos'è Flowpilot</h3>
+          <div class="help-body" data-i18n-html="help.whatB"></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="help.flowT">Le sezioni dell'app</h3>
+          <div class="help-body" data-i18n-html="help.flowB"></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="help.mcpT">Come lavora l'AI (e cosa sono gli MCP)</h3>
+          <div class="help-body" data-i18n-html="help.mcpB"></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="help.srcT">Da dove arriva l'MCP</h3>
+          <div class="help-body" data-i18n-html="help.srcB"></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="help.privacyT">Privacy e dati</h3>
+          <div class="help-body" data-i18n-html="help.privacyB"></div>
+        </div>
+        <div class="card info">
+          <h3 data-i18n="help.reqT">Requisiti</h3>
+          <div class="help-body" data-i18n-html="help.reqB"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="tour" id="tour" hidden>
+  <div class="tour-backdrop" id="tourBackdrop"></div>
+  <div class="tour-ring" id="tourRing" hidden></div>
+
+  <div class="onb-card tour-welcome" id="tourWelcome" role="dialog" aria-modal="true" aria-labelledby="onbTitle" hidden>
+    <button class="tour-langbtn" id="tourLangW" type="button" style="position:absolute; top:14px; right:14px;">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2 2.2 3 4.8 3 7.5s-1 5.3-3 7.5c-2-2.2-3-4.8-3-7.5s1-5.3 3-7.5z"/></svg>
+      <span id="tourLangWLabel">EN</span>
+    </button>
+    <div class="onb-logo">
+      <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="onbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9326"/><stop offset="1" stop-color="#ff2d8b"/></linearGradient></defs><circle cx="128" cy="128" r="120" fill="url(#onbg)"/><path d="M128 56c10 28 10 50 0 72-10-22-10-44 0-72zM128 200c-10-28-10-50 0-72 10 22 10 44 0 72zM56 128c28-10 50-10 72 0-22 10-44 10-72 0zM200 128c-28 10-50 10-72 0 22-10 44-10 72 0z" fill="#fff" opacity=".95"/></svg>
+    </div>
+    <h2 id="onbTitle" data-i18n="onb.title">Benvenuto in Flowpilot</h2>
+    <p class="onb-sub" data-i18n="onb.sub">Registra flussi nel browser, lascia che l'AI navighi i siti e riusa le tue automazioni.</p>
+    <div class="onb-steps">
+      <div class="onb-step"><span class="onb-ic rec">●</span><div><b data-i18n="nav.record">Registra</b><small data-i18n="onb.step1">Cattura click e digitazione reali nel browser.</small></div></div>
+      <div class="onb-step"><span class="onb-ic ai">✦</span><div><b data-i18n="nav.ai">Automazioni</b><small data-i18n="onb.step2">Descrivi un obiettivo: lo esegue Copilot.</small></div></div>
+      <div class="onb-step"><span class="onb-ic lib">▤</span><div><b data-i18n="nav.library">Skills</b><small data-i18n="onb.step3">Salva e riavvia i tuoi task quando vuoi.</small></div></div>
+    </div>
+    <div class="onb-actions">
+      <button class="btn subtle" id="btnTourSkip" type="button" data-i18n="onb.skip">Salta</button>
+      <button class="btn primary" id="btnTourStart" type="button" data-i18n="onb.tourStart">Inizia il tour</button>
+    </div>
+  </div>
+
+  <div class="tour-pop arrow-left" id="tourPop" role="dialog" aria-modal="true" aria-labelledby="tourTitle" hidden>
+    <div class="tour-head">
+      <span class="tour-count" id="tourCount"></span>
+      <button class="tour-langbtn" id="tourLang" type="button">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2 2.2 3 4.8 3 7.5s-1 5.3-3 7.5c-2-2.2-3-4.8-3-7.5s1-5.3 3-7.5z"/></svg>
+        <span id="tourLangLabel">EN</span>
+      </button>
+    </div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourDesc"></p>
+    <label class="check-row tour-dont" id="tourDontWrap" hidden><input type="checkbox" id="tourDontShow"><span data-i18n="onb.dontShow">Non mostrare più all'avvio</span></label>
+    <div class="tour-actions">
+      <button class="btn subtle sm" id="btnTourSkip2" type="button" data-i18n="onb.skip">Salta</button>
+      <span class="grow"></span>
+      <button class="btn subtle sm" id="btnTourBack" type="button" data-i18n="onb.back">Indietro</button>
+      <button class="btn primary sm" id="btnTourNext" type="button" data-i18n="onb.next">Avanti</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const vscode = acquireVsCodeApi();
+const $ = (id) => document.getElementById(id);
+const fmt = (ts) => ts ? new Date(ts).toLocaleString() : '';
+function escapeHtml(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function send(cmd, data) { vscode.postMessage({ cmd, ...data }); }
+
+// ---- Internazionalizzazione (IT / EN) ----
+const I18N = {
+  it: {
+    "tagline":"Registra · Replay · Automazioni","langTitle":"Cambia lingua",
+    "nav.home":"Home","nav.record":"Registra","nav.ai":"Automazioni","nav.video":"Video","nav.library":"Skills","nav.sessions":"Sessioni","nav.settings":"Impostazioni","nav.help":"Guida",
+    "badge.beta":"beta",
+    "help.title":"Come funziona","help.sub":"Una guida semplice a Flowpilot: cosa fa, come lavora l'AI e quali strumenti usa.",
+    "help.whatT":"Cos'è Flowpilot","help.whatB":"<p>Flowpilot ti aiuta ad automatizzare attività ripetitive nel browser. Puoi <strong>registrare</strong> ciò che fai (click, testo digitato, navigazione) e trasformarlo in un report, oppure descrivere un <strong>obiettivo</strong> e lasciare che l'AI lo esegua da sola sul sito. Al termine genera sempre un report in Markdown e un documento Word.</p>",
+    "help.flowT":"Le sezioni dell'app","help.flowB":"<ul><li><strong>Registra</strong> — apre Edge o Chrome con un piccolo overlay Start/Stop e cattura le tue azioni reali.</li><li><strong>Automazioni</strong> — scrivi un obiettivo in linguaggio naturale e Copilot lo esegue nel browser.</li><li><strong>Video → Automazione (beta)</strong> — carichi uno screen recording: l'AI ne osserva i fotogrammi, ricostruisce i passaggi e li riproduce.</li><li><strong>Skills</strong> — i tuoi link e task riutilizzabili, da riavviare quando vuoi.</li><li><strong>Sessioni</strong> — le registrazioni salvate, con i report generati.</li></ul>",
+    "help.mcpT":"Come lavora l'AI (e cosa sono gli MCP)","help.mcpB":"<p>Per agire sui siti, Copilot ha bisogno di <strong>strumenti</strong>. Questi strumenti gli arrivano tramite un <strong>MCP</strong> (Model Context Protocol): immaginalo come un ponte standard che collega l'AI a programmi esterni, dando a Copilot comandi sicuri per controllare il browser — aprire una pagina, cliccare, scrivere, leggere ciò che è a schermo.</p><p>Flowpilot usa il <strong>Playwright MCP</strong>: quando chiedi un'automazione, Copilot chiama questi comandi e tu vedi il browser muoversi da solo.</p>",
+    "help.srcT":"Da dove arriva l'MCP","help.srcB":"<p>Il Playwright MCP (<code>@playwright/mcp</code>) è <strong>già incluso dentro l'estensione</strong>: non devi installare nulla, non serve internet per averlo né Node.js sul tuo computer. Flowpilot lo registra da solo in VS Code e lo avvia con il Node integrato nell'editor.</p><p>Il browser che apre (Edge o Chrome) dipende da ciò che scegli in <strong>Impostazioni</strong> e viene aperto a finestra intera. La piccola configurazione tecnica viene salvata automaticamente nel file <code>playwright-mcp-maximized.json</code>.</p>",
+    "help.privacyT":"Privacy e dati","help.privacyB":"<p>La registrazione e l'estrazione dei fotogrammi avvengono <strong>in locale</strong>, sul tuo computer. A Copilot vengono passati solo il testo delle istruzioni e, per la funzione Video, le immagini dei fotogrammi estratti. Il video originale non viene mai caricato.</p>",
+    "help.reqT":"Requisiti","help.reqB":"<ul><li>VS Code aggiornato (con il supporto agli MCP) e <strong>GitHub Copilot</strong> attivo.</li><li>Un browser <strong>Edge</strong> o <strong>Chrome</strong> installato.</li><li>Per i report Word la libreria è già inclusa: non serve altro.</li></ul>",
+    "home.title":"Panoramica","home.sub":"Registra flussi nel browser, lascia che l'AI navighi i siti e gestisci le tue Skills riutilizzabili.",
+    "home.statSessions":"Sessioni registrate","home.statSkills":"Skill salvate","home.statState":"Stato corrente","home.quick":"Azioni rapide",
+    "tile.recordT":"Nuova registrazione","tile.recordS":"Cattura click e digitazione in Edge o Chrome",
+    "tile.aiT":"Automazioni","tile.aiS":"Descrivi un obiettivo, lo esegue Copilot",
+    "tile.libT":"Skills","tile.libS":"Le tue automazioni salvate, pronte da rieseguire",
+    "tile.sessT":"Vedi sessioni","tile.sessS":"Replay AI e report generati",
+    "record.title":"Registra","record.sub":"Cattura una sessione reale nel browser: click, digitazione, navigazione e scroll.",
+    "qs.load":"Carica una Skill salvata…","record.urlLabel":"URL di partenza",
+    "btn.record":"● Registra","btn.stop":"■ Stop","btn.stopping":"■ Sto stoppando…",
+    "record.howT":"Come funziona","record.howP":"Si apre il browser (Edge o Chrome) con un overlay: premi <b>Start</b> per iniziare a registrare e <b>Stop &amp; Salva</b> per terminare. La sessione viene salvata e potrai rieseguirla con l'AI dalla sezione <b>Sessioni</b>.",
+    "record.lastT":"Ultima registrazione","btn.replayLast":"🤖 Replay (AI)","btn.openFolder":"📂 Apri cartella","record.logT":"Log live",
+    "ai.title":"Automazioni","ai.sub":"Descrivi un obiettivo in linguaggio naturale: Copilot lo esegue sul sito con i tool Playwright MCP. Non serve registrare.",
+    "ai.urlLabel":"URL","ai.goalLabel":"Obiettivo per l'AI","ai.goalPh":"Es: accedi, vai in Fatture, apri l'ultima e dimmi l'importo",
+    "btn.saveSkill":"💾 Salva come Skill","btn.runAuto":"✨ Avvia automazione",
+    "ai.outT":"Cosa produce","ai.outP":"L'AI apre il sito, raggiunge l'obiettivo e scrive un report Markdown più un documento Word executive. Richiede Copilot Chat attivo con i tool MCP.",
+    "video.title":"Video → Automazione","video.sub":"Carica un video (screen recording): l'AI analizza i fotogrammi, ricostruisce i passaggi e li riproduce sul sito con Playwright.",
+    "video.fileLabel":"Video","video.dropTitle":"Trascina qui un video o clicca per sceglierlo","video.dropSub":"MP4, WebM, MOV — l'estrazione dei fotogrammi avviene in locale",
+    "video.urlLabel":"URL di partenza (consigliato)","video.hintLabel":"Contesto / obiettivo (opzionale)","video.hintPh":"Es: è un login al portale fornitori, poi apro l'ultima fattura",
+    "video.framesLabel":"Fotogrammi da estrarre","video.extract":"🎞️ Estrai fotogrammi","video.framesTitle":"Fotogrammi estratti",
+    "video.framesHint":"L'AI accetta al massimo 20 immagini per analisi.","video.framesSub":"Clicca un fotogramma per ingrandirlo e scorrere gli altri.","video.frame":"Fotogramma",
+    "video.reset":"Ricomincia","video.analyze":"✨ Analizza e riproduci con l'AI",
+    "video.howT":"Come funziona","video.howP":"I fotogrammi vengono estratti localmente nel pannello: il video non lascia il tuo computer. Solo le immagini dei fotogrammi vengono salvate e passate a Copilot, che le analizza con la sua capacità visiva per ricostruire e rieseguire le azioni. Funziona meglio con registrazioni del browser. Funzione sperimentale (beta): rivedi sempre i passaggi proposti.",
+    "video.statExtracting":"Estrazione fotogrammi…","video.statReady":"Pronti. Rivedi i fotogrammi, poi avvia l'analisi.","video.statSending":"Invio dei fotogrammi a Copilot…","video.statErr":"Impossibile leggere il video. Prova un altro formato (MP4/WebM).","video.statNoFile":"Seleziona prima un video.",
+    "lib.title":"Skills","lib.sub":"Le tue Skills: link e task riutilizzabili. Avviali con l'AI, modificali o usali per precompilare i campi.",
+    "lib.searchPh":"Cerca tra le Skills…","btn.runSelected":"▶ Esegui selezionati",
+    "lib.empty":"Nessuna skill salvata. Vai in <b>Automazioni</b> e premi “Salva come Skill”.","lib.emptySearch":"Nessuna Skill corrisponde alla ricerca.",
+    "sess.title":"Sessioni","sess.sub":"Le registrazioni catturate. Rieseguile con l'AI e apri i report generati.",
+    "sess.searchPh":"Cerca tra le sessioni…","btn.clearAll":"🗑 Elimina tutto","btn.askCopilot":"🤖 Chiedi a Copilot","btn.cancel":"Annulla",
+    "sess.empty":"Nessuna sessione. Avvia una registrazione dalla sezione <b>Registra</b>.","sess.emptySearch":"Nessuna sessione corrisponde alla ricerca.",
+    "set.title":"Impostazioni","set.sub":"Personalizza l'avvio dell'app e la posizione in cui vengono salvati gli output.",
+    "set.langT":"Lingua","set.langP":"Lingua dell'interfaccia dell'app.",
+    "set.startT":"Schermata iniziale","set.startP":"Sezione mostrata all'apertura dell'app.",
+    "set.outT":"Cartella di output","set.outP":"Dove vengono salvati registrazioni, replay e report. Lascia vuoto per usare la posizione predefinita dell'estensione.",
+    "set.outPh":"(predefinita)","btn.resetDefault":"Ripristina predefinita","btn.browse":"📂 Sfoglia…","btn.save":"Salva","set.curLoc":"Posizione attuale: ",
+    "state.idle":"Inattivo","state.recording":"Registrazione","state.paused":"In pausa","state.waiting":"In attesa","state.replaying":"Replay in corso",
+    "skill.editName":"Nome","skill.editUrl":"URL","skill.editPrompt":"Obiettivo per l'AI (vuoto = solo link)","skill.editPromptPh":"Es: accedi e scarica l'ultima fattura",
+    "btn.run":"▶ Avvia","btn.use":"⤴ Usa","btn.editSave":"Salva","btn.editCancel":"Annulla","badge.ai":"AI","badge.link":"link",
+    "sess.events":"eventi","sess.replaysLabel":"Replays","sess.reportsLabel":"Report generati",
+    "title.aiReplay":"Manda le azioni a Copilot Chat: sarà lui a riprodurle TUTTE usando i tool Playwright MCP",
+    "title.run":"Esegui questo task con l'AI","title.use":"Carica URL e prompt nei campi qui sopra",
+    "compare.sel":"Selezione: ","sel.one":"voce selezionata","sel.many":"voci selezionate",
+    "toast.stopping":"Sto stoppando…","toast.recSaved":"Registrazione salvata: ","toast.mdGen":"Markdown generato: ",
+    "toast.replayDone":"Replay terminato · invio automatico a Copilot…","toast.skillLoaded":"Skill caricata: ","toast.loaded":"Caricato: ",
+    "toast.enterUrl":"Inserisci un URL","toast.noSel":"Nessuna voce selezionata","toast.outUpdated":"Cartella di output aggiornata",
+    "toast.outReset":"Ripristinata posizione predefinita","toast.selectReplay":"Seleziona un replay","toast.err":"Err: ","toast.skillUpdated":"Skill aggiornata",
+    "lib.emptyCreate":"➕ Crea una Skill",
+    "ai.editingSkill":"Stai modificando la Skill:","btn.updateSkill":"💾 Aggiorna Skill",
+    "set.onbT":"Introduzione","set.onbP":"La schermata di benvenuto mostrata all'avvio dell'app.","set.onbCheck":"Mostra l'introduzione all'avvio","btn.showOnboarding":"👋 Rivedi l'introduzione",
+    "onb.title":"Benvenuto in Flowpilot","onb.sub":"Registra flussi nel browser, lascia che l'AI navighi i siti e riusa le tue automazioni.",
+    "onb.step1":"Cattura click e digitazione reali nel browser.","onb.step2":"Descrivi un obiettivo: lo esegue Copilot.","onb.step3":"Salva e riavvia i tuoi task quando vuoi.",
+    "onb.dontShow":"Non mostrare più all'avvio","onb.start":"Inizia",
+    "onb.tourStart":"Inizia il tour","onb.skip":"Salta","onb.back":"Indietro","onb.next":"Avanti","onb.finish":"Fine",
+    "tour.home.desc":"La panoramica: numero di sessioni, Skill salvate e stato corrente, con scorciatoie verso le sezioni principali.",
+    "tour.record.desc":"Qui registri manualmente un flusso nel browser: si apre Edge o Chrome con un overlay Start/Stop e cattura ogni tua azione.",
+    "tour.ai.desc":"Descrivi un obiettivo in linguaggio naturale: Copilot lo esegue sul sito con i tool Playwright. Da qui puoi anche salvare e aggiornare le Skill.",
+    "tour.video.desc":"Funzione beta: carica un video, l'AI ne analizza i fotogrammi, ricostruisce i passaggi e li riproduce nel browser.",
+    "tour.library.desc":"Le tue Skill riutilizzabili: avviale, modificale o cercale. In cima trovi il prompt predefinito usato da Copilot dopo ogni registrazione.",
+    "tour.sessions.desc":"Tutte le registrazioni catturate: rieseguile con l'AI, rinominale, aprirle o consulta i report generati.",
+    "tour.settings.desc":"Lingua, schermata iniziale, introduzione e cartella di output: personalizza qui il comportamento dell'app.",
+    "lib.builtinName":"Prompt AI Replay (predefinito)","lib.builtinDesc":"Inviato automaticamente a GitHub Copilot dopo ogni registrazione per riprodurre le tue azioni. Non modificabile.",
+    "lib.builtinShow":"Mostra il prompt","badge.builtin":"predefinita","btn.copy":" Copia","toast.copied":"Prompt copiato negli appunti"
+  },
+  en: {
+    "tagline":"Record · Replay · Automations","langTitle":"Switch language",
+    "nav.home":"Home","nav.record":"Record","nav.ai":"Automations","nav.video":"Video","nav.library":"Skills","nav.sessions":"Sessions","nav.settings":"Settings","nav.help":"Guide",
+    "badge.beta":"beta",
+    "help.title":"How it works","help.sub":"A simple guide to Flowpilot: what it does, how the AI works and which tools it uses.",
+    "help.whatT":"What is Flowpilot","help.whatB":"<p>Flowpilot helps you automate repetitive browser tasks. You can <strong>record</strong> what you do (clicks, typed text, navigation) and turn it into a report, or describe a <strong>goal</strong> and let the AI carry it out on the site by itself. It always produces a Markdown report and a Word document at the end.</p>",
+    "help.flowT":"The app sections","help.flowB":"<ul><li><strong>Record</strong> — opens Edge or Chrome with a small Start/Stop overlay and captures your real actions.</li><li><strong>Automations</strong> — write a goal in plain language and Copilot runs it in the browser.</li><li><strong>Video → Automation (beta)</strong> — upload a screen recording: the AI looks at the frames, reconstructs the steps and replays them.</li><li><strong>Skills</strong> — your reusable links and tasks, ready to run again.</li><li><strong>Sessions</strong> — your saved recordings, with the generated reports.</li></ul>",
+    "help.mcpT":"How the AI works (and what MCPs are)","help.mcpB":"<p>To act on websites, Copilot needs <strong>tools</strong>. Those tools reach it through an <strong>MCP</strong> (Model Context Protocol): think of it as a standard bridge that connects the AI to external programs, giving Copilot safe commands to control the browser — open a page, click, type, read what is on screen.</p><p>Flowpilot uses the <strong>Playwright MCP</strong>: when you ask for an automation, Copilot calls these commands and you watch the browser move on its own.</p>",
+    "help.srcT":"Where the MCP comes from","help.srcB":"<p>The Playwright MCP (<code>@playwright/mcp</code>) is <strong>already bundled inside the extension</strong>: you don't need to install anything, you don't need internet to get it nor Node.js on your computer. Flowpilot registers it in VS Code automatically and starts it with the editor's built-in Node.</p><p>The browser it opens (Edge or Chrome) depends on what you pick in <strong>Settings</strong> and opens maximized. The small technical configuration is saved automatically in the file <code>playwright-mcp-maximized.json</code>.</p>",
+    "help.privacyT":"Privacy and data","help.privacyB":"<p>Recording and frame extraction happen <strong>locally</strong>, on your computer. Copilot only receives the instruction text and, for the Video feature, the extracted frame images. The original video is never uploaded.</p>",
+    "help.reqT":"Requirements","help.reqB":"<ul><li>An up-to-date VS Code (with MCP support) and <strong>GitHub Copilot</strong> active.</li><li>An <strong>Edge</strong> or <strong>Chrome</strong> browser installed.</li><li>For Word reports the library is already included: nothing else needed.</li></ul>",
+    "home.title":"Overview","home.sub":"Record browser flows, let the AI navigate sites and manage your reusable Skills.",
+    "home.statSessions":"Recorded sessions","home.statSkills":"Saved Skills","home.statState":"Current status","home.quick":"Quick actions",
+    "tile.recordT":"New recording","tile.recordS":"Capture clicks and typing in Edge or Chrome",
+    "tile.aiT":"Automations","tile.aiS":"Describe a goal, Copilot runs it",
+    "tile.libT":"Skills","tile.libS":"Your saved automations, ready to re-run",
+    "tile.sessT":"View sessions","tile.sessS":"AI replays and generated reports",
+    "record.title":"Record","record.sub":"Capture a real browser session: clicks, typing, navigation and scrolling.",
+    "qs.load":"Load a saved Skill…","record.urlLabel":"Start URL",
+    "btn.record":"● Record","btn.stop":"■ Stop","btn.stopping":"■ Stopping…",
+    "record.howT":"How it works","record.howP":"The browser (Edge or Chrome) opens with an overlay: press <b>Start</b> to begin recording and <b>Stop &amp; Save</b> to finish. The session is saved and you can re-run it with the AI from the <b>Sessions</b> section.",
+    "record.lastT":"Last recording","btn.replayLast":"🤖 Replay (AI)","btn.openFolder":"📂 Open folder","record.logT":"Live log",
+    "ai.title":"Automations","ai.sub":"Describe a goal in natural language: Copilot runs it on the site with the Playwright MCP tools. No recording needed.",
+    "ai.urlLabel":"URL","ai.goalLabel":"Goal for the AI","ai.goalPh":"E.g. log in, go to Invoices, open the latest and tell me the amount",
+    "btn.saveSkill":"💾 Save as Skill","btn.runAuto":"✨ Start automation",
+    "ai.outT":"What it produces","ai.outP":"The AI opens the site, reaches the goal and writes a Markdown report plus an executive Word document. Requires Copilot Chat active with the MCP tools.",
+    "video.title":"Video → Automation","video.sub":"Upload a screen recording: the AI analyzes the frames, reconstructs the steps and reproduces them on the site with Playwright.",
+    "video.fileLabel":"Video","video.dropTitle":"Drop a video here or click to choose one","video.dropSub":"MP4, WebM, MOV — frame extraction happens locally",
+    "video.urlLabel":"Start URL (recommended)","video.hintLabel":"Context / goal (optional)","video.hintPh":"E.g. it's a login to the supplier portal, then I open the latest invoice",
+    "video.framesLabel":"Frames to extract","video.extract":"🎞️ Extract frames","video.framesTitle":"Extracted frames",
+    "video.framesHint":"The AI accepts at most 20 images per analysis.","video.framesSub":"Click a frame to enlarge it and scroll through the others.","video.frame":"Frame",
+    "video.reset":"Start over","video.analyze":"✨ Analyze & reproduce with AI",
+    "video.howT":"How it works","video.howP":"Frames are extracted locally in the panel: the video never leaves your computer. Only the frame images are saved and passed to Copilot, which analyzes them with its vision capability to reconstruct and replay the actions. Works best with browser recordings. Experimental feature (beta): always review the proposed steps.",
+    "video.statExtracting":"Extracting frames…","video.statReady":"Ready. Review the frames, then start the analysis.","video.statSending":"Sending frames to Copilot…","video.statErr":"Could not read the video. Try another format (MP4/WebM).","video.statNoFile":"Select a video first.",
+    "lib.title":"Skills","lib.sub":"Your Skills: reusable links and tasks. Run them with the AI, edit them or use them to prefill the fields.",
+    "lib.searchPh":"Search Skills…","btn.runSelected":"▶ Run selected",
+    "lib.empty":"No skills saved yet. Go to <b>Automations</b> and press “Save as Skill”.","lib.emptySearch":"No Skill matches your search.",
+    "sess.title":"Sessions","sess.sub":"Your captured recordings. Re-run them with the AI and open the generated reports.",
+    "sess.searchPh":"Search sessions…","btn.clearAll":"🗑 Delete all","btn.askCopilot":"🤖 Ask Copilot","btn.cancel":"Cancel",
+    "sess.empty":"No sessions yet. Start a recording from the <b>Record</b> section.","sess.emptySearch":"No session matches your search.",
+    "set.title":"Settings","set.sub":"Customize how the app starts and where outputs are saved.",
+    "set.langT":"Language","set.langP":"App interface language.",
+    "set.startT":"Startup screen","set.startP":"Section shown when the app opens.",
+    "set.outT":"Output folder","set.outP":"Where recordings, replays and reports are saved. Leave empty to use the extension default location.",
+    "set.outPh":"(default)","btn.resetDefault":"Reset to default","btn.browse":"📂 Browse…","btn.save":"Save","set.curLoc":"Current location: ",
+    "state.idle":"Idle","state.recording":"Recording","state.paused":"Paused","state.waiting":"Waiting","state.replaying":"Replaying",
+    "skill.editName":"Name","skill.editUrl":"URL","skill.editPrompt":"Goal for the AI (empty = link only)","skill.editPromptPh":"E.g. log in and download the latest invoice",
+    "btn.run":"▶ Run","btn.use":"⤴ Use","btn.editSave":"Save","btn.editCancel":"Cancel","badge.ai":"AI","badge.link":"link",
+    "sess.events":"events","sess.replaysLabel":"Replays","sess.reportsLabel":"Generated reports",
+    "title.aiReplay":"Send the actions to Copilot Chat: it will reproduce them ALL using the Playwright MCP tools",
+    "title.run":"Run this task with the AI","title.use":"Load URL and prompt into the fields above",
+    "compare.sel":"Selection: ","sel.one":"item selected","sel.many":"items selected",
+    "toast.stopping":"Stopping…","toast.recSaved":"Recording saved: ","toast.mdGen":"Markdown generated: ",
+    "toast.replayDone":"Replay finished · auto-sending to Copilot…","toast.skillLoaded":"Skill loaded: ","toast.loaded":"Loaded: ",
+    "toast.enterUrl":"Enter a URL","toast.noSel":"No item selected","toast.outUpdated":"Output folder updated",
+    "toast.outReset":"Default location restored","toast.selectReplay":"Select a replay","toast.err":"Err: ","toast.skillUpdated":"Skill updated",
+    "lib.emptyCreate":"➕ Create a Skill",
+    "ai.editingSkill":"You are editing the Skill:","btn.updateSkill":"💾 Update Skill",
+    "set.onbT":"Introduction","set.onbP":"The welcome screen shown when the app starts.","set.onbCheck":"Show the introduction at startup","btn.showOnboarding":"👋 Replay the introduction",
+    "onb.title":"Welcome to Flowpilot","onb.sub":"Record browser flows, let the AI navigate sites and reuse your automations.",
+    "onb.step1":"Capture real clicks and typing in the browser.","onb.step2":"Describe a goal: Copilot runs it.","onb.step3":"Save and re-run your tasks anytime.",
+    "onb.dontShow":"Don't show again at startup","onb.start":"Get started",
+    "onb.tourStart":"Start the tour","onb.skip":"Skip","onb.back":"Back","onb.next":"Next","onb.finish":"Done",
+    "tour.home.desc":"The overview: number of sessions, saved Skills and current status, with shortcuts to the main sections.",
+    "tour.record.desc":"Here you manually record a browser flow: Edge or Chrome opens with a Start/Stop overlay and captures every action you take.",
+    "tour.ai.desc":"Describe a goal in natural language: Copilot runs it on the site with the Playwright tools. From here you can also save and update Skills.",
+    "tour.video.desc":"Beta feature: upload a video, the AI analyzes its frames, reconstructs the steps and reproduces them in the browser.",
+    "tour.library.desc":"Your reusable Skills: run, edit or search them. At the top you'll find the default prompt Copilot uses after each recording.",
+    "tour.sessions.desc":"All your captured recordings: re-run them with the AI, rename, open them or check the generated reports.",
+    "tour.settings.desc":"Language, startup screen, introduction and output folder: customize the app's behavior here.",
+    "lib.builtinName":"AI Replay prompt (default)","lib.builtinDesc":"Automatically sent to GitHub Copilot after each recording to reproduce your actions. Not editable.",
+    "lib.builtinShow":"Show the prompt","badge.builtin":"default","btn.copy":" Copy","toast.copied":"Prompt copied to clipboard"
+  }
+};
+let lang = 'it';
+function t(key){ const d = I18N[lang] || I18N.it; return (d[key] != null ? d[key] : (I18N.it[key] != null ? I18N.it[key] : key)); }
+function applyI18n(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => { el.innerHTML = t(el.getAttribute('data-i18n-html')); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.setAttribute('placeholder', t(el.getAttribute('data-i18n-ph'))); });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => { el.setAttribute('title', t(el.getAttribute('data-i18n-title'))); });
+  const ll = $('langLabel'); if (ll) ll.textContent = (lang === 'it' ? 'EN' : 'IT');
+  const tll = (lang === 'it' ? 'EN' : 'IT');
+  if ($('tourLangLabel')) $('tourLangLabel').textContent = tll;
+  if ($('tourLangWLabel')) $('tourLangWLabel').textContent = tll;
+  renderLibrary(libraryItems);
+  renderSessions(sessionItems);
+  if (lastState) setState(lastState);
+  if (tourStep >= 0) renderTourStep();
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const t = $('toast'); if (!t) return;
+  t.textContent = String(msg == null ? '' : msg).slice(0, 90);
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+const logEl = $('log');
+function addLog(e) {
+  const isErr = /^\[err]/.test(e.line);
+  const div = document.createElement('div');
+  if (isErr) div.className='err';
+  div.textContent = e.line;
+  logEl.appendChild(div);
+  while (logEl.childNodes.length > 1000) logEl.removeChild(logEl.firstChild);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+let lastCompare = null;
+let selection = null;
+let lastRecorded = null;
+let lastState = null;
+let sessionItems = [];
+let librarySearch = '';
+let sessionSearch = '';
+let editingId = null;
+let qsAiSelectedId = null;
+let onboardingChecked = false;
+let builtinPrompt = '';
+let tourStep = -1; // -1 = chiuso, 0 = welcome, 1..N = step sezioni
+const TOUR_STEPS = ['home','record','ai','video','library','sessions','settings'];
+
+function setState(s) {
+  const hDot=$('homeDot'), hTxt=$('homeStateText');
+  let homeTxt=t('state.idle'), homeDotCls='dot';
+  if (s.running) {
+    const st = (s.info && s.info.state) || '';
+    if (s.kind === 'record') {
+      if (st === 'recording') { homeTxt=t('state.recording'); homeDotCls='dot run'; }
+      else if (st === 'paused') { homeTxt=t('state.paused'); homeDotCls='dot run'; }
+      else { homeTxt=t('state.waiting'); homeDotCls='dot busy'; }
+    } else {
+      homeTxt=t('state.replaying'); homeDotCls='dot busy';
+    }
+    $('btnStop').disabled=false; $('btnStop').textContent=t('btn.stop'); $('btnRecord').disabled=true;
+  } else {
+    $('btnStop').disabled=true; $('btnStop').textContent=t('btn.stop'); $('btnRecord').disabled=false;
+  }
+  if (hDot) hDot.className=homeDotCls; if (hTxt) hTxt.textContent=homeTxt;
+}
+
+function renderSessions(list) {
+  list = Array.isArray(list) ? list : [];
+  sessionItems = list;
+  const root = $('sessions');
+  setNavCount('navSessCount', list.length); { const hs=$('homeSessCount'); if (hs) hs.textContent=list.length; }
+  if (!list.length) { root.innerHTML = '<div class="empty">' + t('sess.empty') + '</div>'; return; }
+  const term = (sessionSearch || '').trim().toLowerCase();
+  const shown = term ? list.filter(s => ((s.name||'')+' '+(s.firstUrl||'')).toLowerCase().includes(term)) : list;
+  if (!shown.length) { root.innerHTML = '<div class="empty">' + t('sess.emptySearch') + '</div>'; return; }
+  root.innerHTML = shown.map(s => `
+    <div class="session" data-name="${escapeHtml(s.name)}">
+      <div class="name">${escapeHtml(s.name)}</div>
+      <div class="meta">${fmt(s.mtime)} · ${s.nEvents} ${t('sess.events')} · ${escapeHtml(s.firstUrl||'')}</div>
+      <div class="actions">
+        <button class="primary" data-act="aiReplay" title="${escapeHtml(t('title.aiReplay'))}">${t('btn.replayLast')}</button>
+        <button data-act="rename">✎</button>
+        <button data-act="open">📂</button>
+        <button class="danger" data-act="delete">🗑</button>
+      </div>
+      ${s.replays.length ? `<div class="replays">
+        <div style="color:var(--vscode-descriptionForeground); font-size:11px; text-transform:uppercase; letter-spacing:.4px">${t('sess.replaysLabel')}</div>
+        ${s.replays.map(r => `
+          <div class="replay" data-replay="${escapeHtml(r.name)}">
+            <input type="radio" name="sel" data-sel="${escapeHtml(r.name)}" data-sess="${escapeHtml(s.name)}">
+            <a class="grow" data-act="open-report">${escapeHtml(r.name)}
+              ${r.total!=null?`<span class="badge ${r.fail?'fail':''}">${r.ok}/${r.total}${r.fail?` ·${r.fail} fail`:''}</span>`:''}
+            </a>
+          </div>`).join('')}
+      </div>`:''}
+      ${(s.reports && s.reports.length) ? `<div class="reports">
+        <div class="reports-h">${t('sess.reportsLabel')}</div>
+        ${s.reports.map(r => `
+          <button type="button" class="report-link" data-report="${escapeHtml(r.path)}" title="${escapeHtml(r.rel)}">
+            <span class="report-ic ${r.kind === 'docx' ? 'docx' : 'md'}">${r.kind === 'docx' ? 'DOCX' : 'MD'}</span>
+            <span class="report-name">${escapeHtml(r.rel)}</span>
+          </button>`).join('')}
+      </div>`:''}
+    </div>`).join('');
+
+  root.querySelectorAll('.session').forEach(card => {
+    const name = card.dataset.name;
+    card.querySelector('[data-act=aiReplay]').onclick = () => send('aiReplay', { name });
+    card.querySelector('[data-act=rename]').onclick = () => send('renameAsk', { name });
+    card.querySelector('[data-act=open]').onclick = () => send('openSessionFolder', { name });
+    card.querySelector('[data-act=delete]').onclick = () => send('deleteAsk', { name });
+    card.querySelectorAll('.replay').forEach(rep => {
+      const replayName = rep.dataset.replay;
+      rep.querySelector('[data-act=open-report]').onclick = (ev) => {
+        ev.preventDefault(); send('openReport', { sessionName: name, replayName });
+      };
+      const radio = rep.querySelector('[data-sel]');
+      radio.onchange = () => {
+        document.querySelectorAll('[data-sel]').forEach(r => { if (r !== radio) r.checked = false; });
+        if (radio.checked) {
+          selection = { sessionName: name, replayName };
+          $('compareInfo').textContent = t('compare.sel') + name + ' · ' + replayName;
+          $('compareBar').style.display='flex';
+        } else {
+          selection = null;
+          $('compareBar').style.display='none';
+        }
+      };
+    });
+    card.querySelectorAll('.report-link').forEach(btn => {
+      btn.onclick = () => send('openReportFile', { path: btn.dataset.report });
+    });
+  });
+}
+
+let librarySel = new Set();
+let libraryItems = [];
+function renderLibrary(items) {
+  items = Array.isArray(items) ? items : [];
+  libraryItems = items;
+  populateQuickSkills();
+  setNavCount('navLibCount', items.length); { const hl=$('homeLibCount'); if (hl) hl.textContent=items.length; }
+  const valid = new Set(items.map(i => i.id));
+  librarySel = new Set([...librarySel].filter(id => valid.has(id)));
+  if (editingId && !valid.has(editingId)) editingId = null;
+  const root = $('library');
+  const term = (librarySearch || '').trim().toLowerCase();
+  const builtinHtml = (!term && builtinPrompt) ? builtinCardHtml() : '';
+  if (!items.length) {
+    root.innerHTML = builtinHtml + '<div class="empty">' + t('lib.empty') + '<div style="margin-top:14px"><button class="btn primary" id="libEmptyCreate" type="button">' + t('lib.emptyCreate') + '</button></div></div>';
+    const b = $('libEmptyCreate'); if (b) b.onclick = () => showView('ai');
+    wireBuiltinCard();
+    updateLibraryBar();
+    return;
+  }
+  const shown = term ? items.filter(it => ((it.name||'')+' '+(it.url||'')+' '+(it.prompt||'')).toLowerCase().includes(term)) : items;
+  if (!shown.length) {
+    root.innerHTML = '<div class="empty">' + t('lib.emptySearch') + '</div>';
+    updateLibraryBar();
+    return;
+  }
+  root.innerHTML = builtinHtml + shown.map(it => {
+    if (it.id === editingId) {
+      return `
+    <div class="session" data-id="${escapeHtml(it.id)}">
+      <div class="skill-edit">
+        <div><div class="field-label">${t('skill.editName')}</div><input type="text" data-edit="name" value="${escapeHtml(it.name||'')}"></div>
+        <div><div class="field-label">${t('skill.editUrl')}</div><input type="url" data-edit="url" value="${escapeHtml(it.url||'')}"></div>
+        <div><div class="field-label">${t('skill.editPrompt')}</div><textarea data-edit="prompt" placeholder="${escapeHtml(t('skill.editPromptPh'))}">${escapeHtml(it.prompt||'')}</textarea></div>
+        <div class="row actions-row">
+          <button class="btn subtle sm" data-act="edit-cancel">${t('btn.editCancel')}</button>
+          <button class="btn primary sm" data-act="edit-save">${t('btn.editSave')}</button>
+        </div>
+      </div>
+    </div>`;
+    }
+    const hasPrompt = !!(it.prompt && it.prompt.trim());
+    const preview = hasPrompt ? `<div class="meta" style="margin-top:2px">“${escapeHtml(it.prompt.slice(0,140))}${it.prompt.length>140?'…':''}”</div>` : '';
+    return `
+    <div class="session" data-id="${escapeHtml(it.id)}">
+      <div class="row" style="align-items:flex-start; flex-wrap:nowrap">
+        <input type="checkbox" data-libsel="${escapeHtml(it.id)}" ${librarySel.has(it.id)?'checked':''} style="margin-top:4px">
+        <div class="grow">
+          <div class="name">${escapeHtml(it.name)} ${hasPrompt?`<span class="badge ai">${t('badge.ai')}</span>`:`<span class="badge link">${t('badge.link')}</span>`}</div>
+          <div class="meta">${escapeHtml(it.url||'')}</div>
+          ${preview}
+        </div>
+      </div>
+      <div class="actions">
+        <button class="primary" data-act="run" title="${escapeHtml(t('title.run'))}">${t('btn.run')}</button>
+        <button data-act="edit">✎</button>
+        <button class="danger" data-act="del">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  root.querySelectorAll('.session[data-id]').forEach(card => {
+    const id = card.dataset.id;
+    const it = items.find(x => x.id === id);
+    if (id === editingId) {
+      card.querySelector('[data-act=edit-save]').onclick = () => {
+        const name = card.querySelector('[data-edit=name]').value;
+        const url = card.querySelector('[data-edit=url]').value;
+        const prompt = card.querySelector('[data-edit=prompt]').value;
+        editingId = null;
+        send('libraryUpdate', { id, name, url, prompt });
+      };
+      card.querySelector('[data-act=edit-cancel]').onclick = () => { editingId = null; renderLibrary(libraryItems); };
+      const ni = card.querySelector('[data-edit=name]'); if (ni) { ni.focus(); ni.setSelectionRange(ni.value.length, ni.value.length); }
+      return;
+    }
+    card.querySelector('[data-act=run]').onclick = () => send('libraryRun', { id });
+    card.querySelector('[data-act=edit]').onclick = () => { editingId = id; renderLibrary(libraryItems); };
+    card.querySelector('[data-act=del]').onclick = () => send('libraryDeleteAsk', { id });
+    const cb = card.querySelector('[data-libsel]');
+    cb.onchange = () => { if (cb.checked) librarySel.add(id); else librarySel.delete(id); updateLibraryBar(); };
+  });
+  wireBuiltinCard();
+  updateLibraryBar();
+}
+function builtinCardHtml() {
+  return `
+    <div class="session skill-builtin">
+      <div class="row" style="align-items:flex-start; flex-wrap:nowrap">
+        <div class="grow">
+          <div class="name">🔒 ${t('lib.builtinName')} <span class="badge builtin">${t('badge.builtin')}</span></div>
+          <div class="meta" style="margin-top:2px">${t('lib.builtinDesc')}</div>
+          <details>
+            <summary>${t('lib.builtinShow')}</summary>
+            <pre>${escapeHtml(builtinPrompt)}</pre>
+            <div class="row actions-row" style="margin-top:8px">
+              <button class="btn subtle sm" id="btnBuiltinCopy" type="button">⧉${t('btn.copy')}</button>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>`;
+}
+function wireBuiltinCard() {
+  const b = $('btnBuiltinCopy');
+  if (b) b.onclick = async () => {
+    try { await navigator.clipboard.writeText(builtinPrompt); toast(t('toast.copied')); }
+    catch (e) { /* clipboard non disponibile nel webview */ }
+  };
+}
+function updateLibraryBar() {
+  const n = librarySel.size;
+  $('libraryBar').style.display = n ? 'flex' : 'none';
+  $('librarySelInfo').textContent = n ? (n + ' ' + (n===1 ? t('sel.one') : t('sel.many'))) : '';
+}
+function populateQuickSkills() {
+  const sel = $('qsAi');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">' + t('qs.load') + '</option>' +
+      libraryItems.map(it => `<option value="${escapeHtml(it.id)}">${escapeHtml(it.name)}${it.prompt && it.prompt.trim() ? ' · AI' : ' · link'}</option>`).join('');
+    if (cur && libraryItems.some(it => it.id === cur)) sel.value = cur;
+  }
+  if ($('qsAiWrap')) $('qsAiWrap').style.display = libraryItems.length > 0 ? 'flex' : 'none';
+  if (qsAiSelectedId && !libraryItems.some(it => it.id === qsAiSelectedId)) qsAiSelectedId = null;
+  updateAiSkillHint();
+}
+function updateAiSkillHint() {
+  const hint = $('aiSkillHint'); if (!hint) return;
+  const it = qsAiSelectedId ? libraryItems.find(x => x.id === qsAiSelectedId) : null;
+  if (it) {
+    const nameEl = $('aiSkillName'); if (nameEl) nameEl.textContent = it.name;
+    hint.style.display = 'flex';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+window.addEventListener('message', (e) => {
+  const m = e.data;
+  switch (m.type) {
+    case 'state': lastState = m; setState(m); break;
+    case 'sessions': renderSessions(m.sessions); break;
+    case 'library': if (typeof m.builtinPrompt === 'string') builtinPrompt = m.builtinPrompt; renderLibrary(m.items); break;
+    case 'settings': applySettings(m); break;
+    case 'recordFinished':
+      lastRecorded = m.sessionName;
+      $('lastRecName').textContent = m.sessionName;
+      $('lastRecCard').style.display = 'block';
+      toast(t('toast.recSaved') + m.sessionName);
+      break;
+    case 'log': addLog(m.entry); break;
+    case 'clearLog': logEl.innerHTML=''; break;
+    case 'compareDone':
+      lastCompare = m;
+      toast(t('toast.mdGen') + (m.file || ''));
+      // Se l'utente ha cliccato "Chiedi a Copilot", invia subito il prompt.
+      if (autoAsk) { autoAsk = false; send('askCopilot', m); }
+      break;
+    case 'replayFinished':
+      // Auto-flow al termine del replay: genera il .md e poi lo manda a Copilot
+      // senza richiedere alcuna interazione manuale.
+      autoAsk = true;
+      selection = { sessionName: m.sessionName, replayName: m.replayName };
+      $('compareInfo').textContent = t('compare.sel') + m.sessionName + ' · ' + m.replayName;
+      $('compareBar').style.display = 'flex';
+      toast(t('toast.replayDone'));
+      send('compare', selection);
+      break;
+    case 'error':
+      toast(t('toast.err') + m.error);
+      break;
+  }
+});
+
+$('btnRecord').onclick = () => { logEl.innerHTML=''; $('lastRecCard').style.display='none'; send('record', { url: $('url').value.trim() }); };
+$('btnStop').onclick = () => {
+  const b = $('btnStop'); b.disabled = true; b.textContent = t('btn.stopping');
+  toast(t('toast.stopping'));
+  send('stop');
+};
+$('btnReplayLast').onclick = () => { if (lastRecorded) send('aiReplay', { name: lastRecorded }); };
+$('btnOpenLast').onclick = () => { if (lastRecorded) send('openSessionFolder', { name: lastRecorded }); };
+$('btnClear').onclick = () => send('clearAllAsk');
+$('btnAiNavigate').onclick = () => {
+  const url = $('aiUrl').value.trim();
+  const prompt = $('aiPrompt').value.trim();
+  if (!url) { toast(t('toast.enterUrl')); return; }
+  send('aiNavigate', { url, prompt });
+};
+$('btnAiSave').onclick = () => {
+  const url = $('aiUrl').value.trim();
+  const prompt = $('aiPrompt').value.trim();
+  if (!url) { toast(t('toast.enterUrl')); return; }
+  send('librarySaveAsk', { url, prompt });
+};
+$('btnAiUpdate').onclick = () => {
+  if (!qsAiSelectedId) return;
+  const it = libraryItems.find(x => x.id === qsAiSelectedId);
+  if (!it) { qsAiSelectedId = null; updateAiSkillHint(); return; }
+  send('libraryUpdate', { id: qsAiSelectedId, name: it.name, url: $('aiUrl').value.trim(), prompt: $('aiPrompt').value.trim() });
+  toast(t('toast.skillUpdated'));
+};
+$('btnRunSelected').onclick = () => {
+  if (!librarySel.size) { toast(t('toast.noSel')); return; }
+  send('libraryRunSelected', { ids: Array.from(librarySel) });
+};
+if ($('librarySearch')) $('librarySearch').oninput = () => { librarySearch = $('librarySearch').value; renderLibrary(libraryItems); };
+if ($('sessionSearch')) $('sessionSearch').oninput = () => { sessionSearch = $('sessionSearch').value; renderSessions(sessionItems); };
+if ($('qsAi')) $('qsAi').onchange = () => {
+  const it = libraryItems.find(x => x.id === $('qsAi').value);
+  if (it) {
+    qsAiSelectedId = it.id;
+    $('aiUrl').value = it.url || '';
+    $('aiPrompt').value = it.prompt || '';
+    toast(t('toast.skillLoaded') + it.name);
+  } else {
+    qsAiSelectedId = null;
+  }
+  updateAiSkillHint();
+};
+
+// ---- Video → automazione (BETA) ----
+const MAX_AI_FRAMES = 20; // limite immagini per richiesta del modello
+let videoFile = null;
+let videoFramesData = [];
+let videoObjectUrl = null;
+const videoFramesEl = $('videoFrames');
+if (videoFramesEl) videoFramesEl.oninput = () => { $('videoFramesVal').textContent = videoFramesEl.value; };
+
+function setVideoStatus(key, raw){
+  const el = $('videoStatus'); if (!el) return;
+  const msg = raw != null ? raw : (key ? t(key) : '');
+  el.textContent = msg; el.hidden = !msg;
+}
+function loadImage(src){
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error('img'));
+    im.src = src;
+  });
+}
+// Prepara le immagini per l'AI: fino a MAX immagini singole; se i fotogrammi
+// sono di piu', li raggruppa in "contact sheet" (griglie) cosi' arrivano TUTTI
+// rispettando il limite di immagini del modello, senza scartarne nessuno.
+async function buildAiImages(frames, maxImages){
+  if (frames.length <= maxImages){
+    return { composite: false, images: frames.map(f => ({ dataUrl: f.dataUrl, items: [{ index: f.index, t: f.t }] })) };
+  }
+  const perSheet = Math.ceil(frames.length / maxImages);
+  const cols = Math.ceil(Math.sqrt(perSheet));
+  const rows = Math.ceil(perSheet / cols);
+  const cellW = 640, cellH = 360, pad = 6, header = 22;
+  const sheetW = cols * cellW + (cols + 1) * pad;
+  const sheetH = rows * (cellH + header) + (rows + 1) * pad;
+  const canvas = document.createElement('canvas');
+  canvas.width = sheetW; canvas.height = sheetH;
+  const ctx = canvas.getContext('2d');
+  const images = [];
+  for (let s = 0; s < frames.length; s += perSheet){
+    const group = frames.slice(s, s + perSheet);
+    ctx.fillStyle = '#0b0b0f'; ctx.fillRect(0, 0, sheetW, sheetH);
+    const items = [];
+    for (let k = 0; k < group.length; k++){
+      const f = group[k];
+      const c = k % cols, r = Math.floor(k / cols);
+      const x = pad + c * (cellW + pad);
+      const y = pad + r * (cellH + header + pad);
+      ctx.fillStyle = '#12b8cb'; ctx.fillRect(x, y, cellW, header);
+      ctx.fillStyle = '#04222a'; ctx.font = 'bold 14px sans-serif'; ctx.textBaseline = 'middle';
+      ctx.fillText('#' + f.index + '  ·  ' + f.t + 's', x + 8, y + header / 2);
+      const im = await loadImage(f.dataUrl);
+      ctx.drawImage(im, x, y + header, cellW, cellH);
+      items.push({ index: f.index, t: f.t });
+    }
+    images.push({ dataUrl: canvas.toDataURL('image/jpeg', 0.82), items });
+  }
+  return { composite: true, images };
+}
+function pickVideo(file){
+  if (!file) return;
+  videoFile = file;
+  const meta = $('videoMeta');
+  meta.hidden = false;
+  meta.textContent = file.name + ' · ' + (file.size/1048576).toFixed(1) + ' MB';
+  if (videoObjectUrl) { try { URL.revokeObjectURL(videoObjectUrl); } catch(_){} }
+  videoObjectUrl = URL.createObjectURL(file);
+  const v = $('videoEl');
+  v.src = videoObjectUrl;
+  v.load();
+  $('videoPreview').hidden = false;
+  $('btnVideoExtract').disabled = false;
+  // reset frame precedenti
+  videoFramesData = [];
+  $('videoFramesCard').hidden = true;
+  setVideoStatus(null, '');
+}
+if ($('videoDrop')) {
+  const dz = $('videoDrop');
+  dz.onclick = () => $('videoFile').click();
+  dz.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('videoFile').click(); } };
+  dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag'); };
+  dz.ondragleave = () => dz.classList.remove('drag');
+  dz.ondrop = (e) => {
+    e.preventDefault(); dz.classList.remove('drag');
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && f.type.startsWith('video/')) pickVideo(f);
+  };
+}
+if ($('videoFile')) $('videoFile').onchange = (e) => { const f = e.target.files && e.target.files[0]; if (f) pickVideo(f); };
+
+function seekVideo(v, time){
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => { if (done) return; done = true; v.removeEventListener('seeked', finish); resolve(); };
+    v.addEventListener('seeked', finish);
+    setTimeout(finish, 2500);
+    try { v.currentTime = Math.max(0, Math.min(time, (v.duration || 0) - 0.05)); }
+    catch (_) { finish(); }
+  });
+}
+function ensureVideoMeta(v){
+  return new Promise((resolve, reject) => {
+    if (v.readyState >= 1 && isFinite(v.duration) && v.duration > 0) return resolve();
+    const cleanup = () => { v.removeEventListener('loadedmetadata', ok); v.removeEventListener('error', err); };
+    const ok = () => { cleanup(); (isFinite(v.duration) && v.duration > 0) ? resolve() : reject(new Error('duration')); };
+    const err = () => { cleanup(); reject(new Error('decode')); };
+    v.addEventListener('loadedmetadata', ok);
+    v.addEventListener('error', err);
+  });
+}
+async function extractFrames(count){
+  const v = $('videoEl');
+  await ensureVideoMeta(v);
+  const dur = v.duration;
+  if (!isFinite(dur) || dur <= 0) throw new Error('duration');
+  const canvas = $('videoCanvas');
+  const maxW = 1280;
+  const scale = (v.videoWidth > maxW) ? (maxW / v.videoWidth) : 1;
+  canvas.width = Math.max(2, Math.round(v.videoWidth * scale));
+  canvas.height = Math.max(2, Math.round(v.videoHeight * scale));
+  const ctx = canvas.getContext('2d');
+  const wasMuted = v.muted; v.muted = true; try { v.pause(); } catch(_){}
+  const frames = [];
+  for (let i = 0; i < count; i++){
+    const time = dur * ((i + 0.5) / count);
+    await seekVideo(v, time);
+    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+    frames.push({ index: i + 1, t: +time.toFixed(2), dataUrl: canvas.toDataURL('image/jpeg', 0.82) });
+    setVideoStatus(null, t('video.statExtracting') + ' ' + (i + 1) + '/' + count);
+  }
+  try { v.currentTime = 0; } catch(_){}
+  v.muted = wasMuted;
+  return { frames, duration: dur };
+}
+function renderFrameGrid(frames){
+  const grid = $('videoFrameGrid');
+  grid.innerHTML = frames.map(f => `<div class="frame-cell" role="button" tabindex="0" data-frame="${f.index}"><img src="${f.dataUrl}" alt="frame ${f.index}"><span>${f.index}</span></div>`).join('');
+  grid.querySelectorAll('.frame-cell').forEach((cell, i) => {
+    cell.onclick = () => openFrameViewer(i);
+    cell.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFrameViewer(i); } };
+  });
+  $('videoFrameCount').textContent = frames.length;
+  $('videoFramesCard').hidden = false;
+}
+
+// Visualizzatore fotogrammi (lightbox con navigazione)
+let fvIndex = -1;
+function syncPreviewTo(f){ const v = $('videoEl'); if (v && f && isFinite(f.t)) { try { v.currentTime = f.t; } catch(_){} } }
+function renderFrameViewer(){
+  const f = videoFramesData[fvIndex]; if (!f) return;
+  $('fvImg').src = f.dataUrl;
+  $('fvCaption').textContent = t('video.frame') + ' ' + (fvIndex + 1) + ' / ' + videoFramesData.length + (isFinite(f.t) ? ' · ' + f.t + 's' : '');
+  $('fvPrev').disabled = (fvIndex <= 0);
+  $('fvNext').disabled = (fvIndex >= videoFramesData.length - 1);
+}
+function openFrameViewer(i){
+  if (!videoFramesData.length) return;
+  fvIndex = Math.max(0, Math.min(i, videoFramesData.length - 1));
+  renderFrameViewer();
+  $('frameViewer').hidden = false;
+  syncPreviewTo(videoFramesData[fvIndex]);
+}
+function closeFrameViewer(){ $('frameViewer').hidden = true; fvIndex = -1; }
+function stepFrameViewer(d){
+  if (fvIndex < 0) return;
+  const n = fvIndex + d;
+  if (n < 0 || n >= videoFramesData.length) return;
+  fvIndex = n; renderFrameViewer(); syncPreviewTo(videoFramesData[fvIndex]);
+}
+if ($('fvClose')) $('fvClose').onclick = closeFrameViewer;
+if ($('fvBackdrop')) $('fvBackdrop').onclick = closeFrameViewer;
+if ($('fvPrev')) $('fvPrev').onclick = () => stepFrameViewer(-1);
+if ($('fvNext')) $('fvNext').onclick = () => stepFrameViewer(1);
+window.addEventListener('keydown', (e) => {
+  if (!$('frameViewer') || $('frameViewer').hidden) return;
+  if (e.key === 'Escape') closeFrameViewer();
+  else if (e.key === 'ArrowLeft') stepFrameViewer(-1);
+  else if (e.key === 'ArrowRight') stepFrameViewer(1);
+});
+if ($('btnVideoExtract')) $('btnVideoExtract').onclick = async () => {
+  if (!videoFile) { setVideoStatus('video.statNoFile'); return; }
+  const count = parseInt($('videoFrames').value, 10) || 16;
+  $('btnVideoExtract').disabled = true;
+  setVideoStatus('video.statExtracting');
+  try {
+    const { frames } = await extractFrames(count);
+    videoFramesData = frames;
+    renderFrameGrid(frames);
+    setVideoStatus('video.statReady');
+  } catch (e) {
+    setVideoStatus('video.statErr');
+  } finally {
+    $('btnVideoExtract').disabled = false;
+  }
+};
+if ($('btnVideoAnalyze')) $('btnVideoAnalyze').onclick = async () => {
+  if (!videoFramesData.length) { setVideoStatus('video.statNoFile'); return; }
+  setVideoStatus('video.statSending');
+  $('btnVideoAnalyze').disabled = true;
+  try {
+    const built = await buildAiImages(videoFramesData, MAX_AI_FRAMES);
+    send('videoAnalyze', {
+      url: $('videoUrl').value.trim(),
+      hint: $('videoHint').value.trim(),
+      fileName: videoFile ? videoFile.name : '',
+      durationSec: $('videoEl') ? ($('videoEl').duration || null) : null,
+      composite: built.composite,
+      frames: built.images
+    });
+  } catch (e) {
+    setVideoStatus('video.statErr');
+  } finally {
+    $('btnVideoAnalyze').disabled = false;
+  }
+};
+if ($('btnVideoReset')) $('btnVideoReset').onclick = () => {
+  videoFile = null; videoFramesData = [];
+  if (videoObjectUrl) { try { URL.revokeObjectURL(videoObjectUrl); } catch(_){} videoObjectUrl = null; }
+  const v = $('videoEl'); if (v) { v.removeAttribute('src'); try { v.load(); } catch(_){} }
+  closeFrameViewer();
+  $('videoFile').value = '';
+  $('videoMeta').hidden = true;
+  $('videoPreview').hidden = true;
+  $('videoFramesCard').hidden = true;
+  $('btnVideoExtract').disabled = true;
+  setVideoStatus(null, '');
+};
+
+// ---- Navigazione tra sezioni (stile Fluent NavigationView) ----
+let currentView = 'home';
+function showView(name){
+  currentView = name;
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.dataset.view === name));
+  const c = document.querySelector('.content'); if (c) c.scrollTop = 0;
+}
+function setNavCount(id, n){ const el=$(id); if (!el) return; el.textContent=n; el.classList.toggle('show', n>0); }
+document.querySelectorAll('.nav-item').forEach(b => b.onclick = () => showView(b.dataset.view));
+document.querySelectorAll('[data-goto]').forEach(b => b.onclick = () => showView(b.dataset.goto));
+
+// ---- Impostazioni ----
+let startupApplied = false;
+function applySettings(s){
+  lang = (s.language === 'en') ? 'en' : 'it';
+  if ($('setLanguage')) $('setLanguage').value = lang;
+  if ($('setStartup')) $('setStartup').value = s.startupView || 'home';
+  if ($('setOutput')) $('setOutput').value = s.outputDir || '';
+  const showOnb = s.showOnboarding !== false;
+  if ($('setOnboarding')) $('setOnboarding').checked = showOnb;
+  applyI18n();
+  if ($('setOutputEffective')) $('setOutputEffective').textContent = s.effectiveDir ? (t('set.curLoc') + s.effectiveDir) : '';
+  if (!startupApplied) {
+    startupApplied = true;
+    const v = s.startupView || 'home';
+    if (v && v !== 'home' && document.querySelector('.view[data-view="'+v+'"]')) showView(v);
+  }
+  if (!onboardingChecked) {
+    onboardingChecked = true;
+    if (showOnb) startTour();
+  }
+}
+
+// ---- Tour guidato (onboarding) ----
+function startTour(){
+  tourStep = 0;
+  if ($('tour')) $('tour').hidden = false;
+  if ($('tourDontShow')) $('tourDontShow').checked = false;
+  renderTourStep();
+}
+function endTour(persistDont){
+  if (persistDont && $('tourDontShow') && $('tourDontShow').checked) send('settingsSetOnboarding', { show: false });
+  tourStep = -1;
+  if ($('tour')) $('tour').hidden = true;
+  if ($('tourRing')) $('tourRing').hidden = true;
+  const nav = document.querySelector('.nav'); if (nav) nav.classList.remove('tour-lift');
+}
+function renderTourStep(){
+  if (tourStep < 0) return;
+  if ($('tour')) $('tour').hidden = false;
+  const welcome = $('tourWelcome'), pop = $('tourPop'), ring = $('tourRing'), nav = document.querySelector('.nav');
+  if (tourStep === 0){
+    if (welcome) welcome.hidden = false;
+    if (pop) pop.hidden = true;
+    if (ring) ring.hidden = true;
+    if (nav) nav.classList.remove('tour-lift');
+    return;
+  }
+  if (welcome) welcome.hidden = true;
+  const N = TOUR_STEPS.length;
+  const idx = tourStep - 1;
+  const view = TOUR_STEPS[idx];
+  showView(view);
+  if (nav) nav.classList.add('tour-lift');
+  const navItem = document.querySelector('.nav-item[data-view="'+view+'"]');
+  $('tourCount').textContent = (idx+1) + ' / ' + N;
+  $('tourTitle').textContent = t('nav.'+view);
+  $('tourDesc').textContent = t('tour.'+view+'.desc');
+  const last = (tourStep === N);
+  if ($('tourDontWrap')) $('tourDontWrap').hidden = !last;
+  if ($('btnTourNext')) $('btnTourNext').textContent = last ? t('onb.finish') : t('onb.next');
+  if ($('btnTourBack')) $('btnTourBack').style.visibility = (tourStep === 1) ? 'hidden' : 'visible';
+  if (pop) pop.hidden = false;
+  if (ring) ring.hidden = false;
+  positionTour(navItem);
+}
+function positionTour(navItem){
+  if (tourStep < 1) return;
+  navItem = navItem || document.querySelector('.nav-item[data-view="'+TOUR_STEPS[tourStep-1]+'"]');
+  const ring = $('tourRing'), pop = $('tourPop');
+  if (!navItem || !ring || !pop) return;
+  const r = navItem.getBoundingClientRect();
+  const pad = 4;
+  ring.style.left = (r.left - pad) + 'px';
+  ring.style.top = (r.top - pad) + 'px';
+  ring.style.width = (r.width + pad*2) + 'px';
+  ring.style.height = (r.height + pad*2) + 'px';
+  const gap = 16;
+  const pw = pop.offsetWidth || 300, ph = pop.offsetHeight || 180;
+  let left = r.right + gap;
+  if (left + pw <= window.innerWidth - 12){
+    pop.classList.remove('arrow-top'); pop.classList.add('arrow-left');
+    let top = r.top - 4;
+    if (top + ph > window.innerHeight - 12) top = Math.max(12, window.innerHeight - 12 - ph);
+    pop.style.left = left + 'px';
+    pop.style.top = top + 'px';
+  } else {
+    pop.classList.remove('arrow-left'); pop.classList.add('arrow-top');
+    pop.style.left = Math.max(12, Math.min(r.left, window.innerWidth - 12 - pw)) + 'px';
+    pop.style.top = (r.bottom + gap) + 'px';
+  }
+}
+if ($('btnTourStart')) $('btnTourStart').onclick = () => { tourStep = 1; renderTourStep(); };
+if ($('btnTourSkip')) $('btnTourSkip').onclick = () => endTour(false);
+if ($('btnTourSkip2')) $('btnTourSkip2').onclick = () => endTour(false);
+if ($('btnTourBack')) $('btnTourBack').onclick = () => { if (tourStep > 1){ tourStep--; renderTourStep(); } };
+if ($('btnTourNext')) $('btnTourNext').onclick = () => {
+  const N = TOUR_STEPS.length;
+  if (tourStep >= N) { endTour(true); return; }
+  tourStep++; renderTourStep();
+};
+const tourLangToggle = () => send('settingsSetLanguage', { lang: (lang === 'it' ? 'en' : 'it') });
+if ($('tourLang')) $('tourLang').onclick = tourLangToggle;
+if ($('tourLangW')) $('tourLangW').onclick = tourLangToggle;
+if ($('btnShowOnboarding')) $('btnShowOnboarding').onclick = () => startTour();
+window.addEventListener('resize', () => { if (tourStep >= 1) positionTour(); });
+if ($('setOnboarding')) $('setOnboarding').onchange = () => send('settingsSetOnboarding', { show: $('setOnboarding').checked });
+if ($('btnLang')) $('btnLang').onclick = () => send('settingsSetLanguage', { lang: (lang === 'it' ? 'en' : 'it') });
+if ($('setLanguage')) $('setLanguage').onchange = () => send('settingsSetLanguage', { lang: $('setLanguage').value });
+if ($('setStartup')) $('setStartup').onchange = () => send('settingsSetStartup', { view: $('setStartup').value });
+if ($('btnOutputBrowse')) $('btnOutputBrowse').onclick = () => send('settingsBrowseOutput');
+if ($('btnOutputSave')) $('btnOutputSave').onclick = () => { send('settingsSetOutput', { path: $('setOutput').value.trim() }); toast(t('toast.outUpdated')); };
+if ($('btnOutputReset')) $('btnOutputReset').onclick = () => { $('setOutput').value=''; send('settingsSetOutput', { path: '' }); toast(t('toast.outReset')); };
+$('btnClearSel').onclick = () => {
+  document.querySelectorAll('[data-sel]').forEach(r => r.checked=false);
+  selection = null; $('compareBar').style.display='none';
+};
+// Bottone unico: genera il .md (sempre in 'final report') e poi lo manda a Copilot.
+let autoAsk = false;
+$('btnAskCopilot').onclick = () => {
+  if (!selection) { toast(t('toast.selectReplay')); return; }
+  autoAsk = true;
+  send('compare', selection);
+};
+
+send('init');
+</script>
+</body>
+</html>

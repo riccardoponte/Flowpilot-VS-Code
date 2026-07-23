@@ -1,0 +1,147 @@
+{
+  "name": "edge-action-recorder",
+  "displayName": "Flowpilot",
+  "description": "Registra i tuoi flussi nel browser (Edge o Chrome), li riproduce con Playwright e automatizza la navigazione con GitHub Copilot.",
+  "version": "2.19.0",
+  "publisher": "t-rponte",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "engines": { "vscode": "^1.102.0" },
+  "categories": ["Testing", "AI", "Other"],
+  "keywords": ["flowpilot", "playwright", "edge", "chrome", "recorder", "regression", "qa", "copilot", "mcp", "automation"],
+  "galleryBanner": { "color": "#1f1f28", "theme": "dark" },
+  "main": "./extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "edgeRecorder.open", "title": "Flowpilot: apri pannello", "category": "Flowpilot", "icon": "$(record)" },
+      { "command": "edgeRecorder.openRecordingsFolder", "title": "Flowpilot: apri cartella registrazioni", "category": "Flowpilot" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "edgeRecorder",
+          "title": "Flowpilot",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "edgeRecorder": [
+        { "id": "edgeRecorder.home", "name": "Flowpilot", "type": "webview", "icon": "media/icon.svg" }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        { "command": "edgeRecorder.open", "when": "view == edgeRecorder.home", "group": "navigation" }
+      ]
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "edgeRecorder.playwright",
+        "label": "Playwright (Flowpilot)"
+      }
+    ],
+    "configuration": {
+      "title": "Flowpilot",
+      "properties": {
+        "edgeRecorder.language": {
+          "type": "string",
+          "enum": ["it", "en"],
+          "enumDescriptions": [
+            "Italiano",
+            "English"
+          ],
+          "default": "it",
+          "scope": "machine",
+          "markdownDescription": "Lingua dell'interfaccia dell'app. Modificabile anche dal pulsante in alto a destra o dalla sezione **Impostazioni**."
+        },
+        "edgeRecorder.showOnboarding": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine",
+          "markdownDescription": "Mostra la schermata introduttiva all'avvio dell'app. Disattivabile dalla schermata stessa o dalla sezione **Impostazioni**."
+        },
+        "edgeRecorder.browser": {
+          "type": "string",
+          "enum": ["auto", "msedge", "chrome"],
+          "enumDescriptions": [
+            "Rileva automaticamente il browser installato: prova prima Microsoft Edge, poi Google Chrome.",
+            "Usa Microsoft Edge (canale stable/beta/dev). Ricade su Chrome se Edge non e' avviabile.",
+            "Usa Google Chrome (canale stable/beta/dev). Ricade su Edge se Chrome non e' avviabile."
+          ],
+          "default": "auto",
+          "scope": "machine",
+          "markdownDescription": "Browser usato per registrazioni, replay e AI replay. **`auto`** (predefinito) rileva automaticamente Microsoft Edge o Google Chrome; scegli `msedge` o `chrome` per forzare un browser specifico. In ogni caso e' previsto un fallback automatico sull'altro browser se quello scelto non e' installato o non e' avviabile."
+        },
+        "edgeRecorder.startupView": {
+          "type": "string",
+          "enum": ["home", "record", "ai", "library", "sessions"],
+          "enumDescriptions": [
+            "Home (panoramica)",
+            "Registra",
+            "Automazioni",
+            "Skills",
+            "Sessioni"
+          ],
+          "default": "home",
+          "scope": "machine",
+          "markdownDescription": "Sezione mostrata all'apertura dell'app. Modificabile anche dalla sezione **Impostazioni** dell'applicazione."
+        },
+        "edgeRecorder.recordingsPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Cartella in cui salvare le registrazioni e i replay. **Se vuota viene usato il `globalStorage` dell'estensione** (persistente tra aggiornamenti, non visibile all'utente). Imposta un path esplicito (es. `C:/Users/<tu>/Documents/edge-recordings`) se vuoi accedere ai file direttamente."
+        },
+        "edgeRecorder.wordOutputPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Cartella in cui Copilot salverà i report Word (`.docx`) generati dall'AI replay. **Se vuota, il `.docx` viene salvato nella stessa cartella del report `.md` della sessione**, così restano insieme e sono apribili dalla sezione **Sessioni**. Imposta un path esplicito solo se preferisci raccogliere tutti i `.docx` in un'unica cartella separata."
+        },
+        "edgeRecorder.edgeProfileDir": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Cartella del profilo del browser usato per registrazioni e replay (login persistenti tra sessioni). Se vuota viene usata `edge-profile/` dentro la cartella di storage globale dell'estensione. Con Google Chrome viene usata automaticamente la cartella sorella `edge-profile-chrome/` per non entrare in conflitto con il profilo di Edge. **Non puntare al profilo del tuo browser personale** (rischio di lock e corruzione): usa una cartella dedicata."
+        },
+        "edgeRecorder.screenCapture": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine",
+          "markdownDescription": "Durante la registrazione avvia **un'unica cattura continua di tutto lo schermo** (tutti i monitor), dallo Start allo Stop, e ne ricava dei **frame a 1 fotogramma al secondo**. A differenza del video del solo browser, questa cattura riprende l'intero desktop (dialoghi di sistema, selettori file, altre finestre). Gli artefatti finiscono in `original flow/video/screen.mp4` e `original flow/frames`. Richiede **ffmpeg** per il video; senza ffmpeg vengono comunque salvati i frame tramite uno screenshot al secondo."
+        },
+        "edgeRecorder.screenCaptureFps": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 30,
+          "scope": "machine",
+          "markdownDescription": "Fotogrammi al secondo con cui viene catturato il **video** a schermo intero (`screen.mp4`). I frame estratti restano comunque a 1 fps. Valori bassi (2-4) riducono l'uso di CPU e la dimensione del file; alzalo solo se vuoi un video più fluido."
+        },
+        "edgeRecorder.ffmpegPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "markdownDescription": "Percorso all'eseguibile **ffmpeg** usato per la registrazione a schermo intero. Se vuoto viene cercato `ffmpeg` nel `PATH` di sistema. Serve un build completo (con `gdigrab` e `libx264`, es. quello di gyan.dev o BtbN): quello incluso in Playwright non è adatto. Se ffmpeg non è disponibile, la cattura ricade su uno screenshot al secondo (solo frame, niente video)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm install --omit=dev --no-audit --no-fund --ignore-scripts",
+    "icon": "node scripts/make-icon.js",
+    "test": "node --test",
+    "package": "npx --yes @vscode/vsce package --no-yarn",
+    "publish": "npx --yes @vscode/vsce publish --no-yarn"
+  },
+  "dependencies": {
+    "@playwright/mcp": "^0.0.41",
+    "playwright-core": "^1.60.0",
+    "docx": "^9.0.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.2.0"
+  }
+}
